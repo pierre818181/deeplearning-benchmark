@@ -122,8 +122,9 @@ def gather_throughput(
     path = path_result + "/" + system + "/" + name
     count = 0.000000001
     total_throughput = 0.0
-
+    print(path)
     if os.path.exists(path):
+        print(path, "exists")
         for filename in os.listdir(path):
             if filename.endswith(".txt"):
                 flag = False
@@ -134,6 +135,7 @@ def gather_throughput(
                         # print(match.group().split(' ')) # for debug
                         try:
                             throughput = float(match.group().split(" ")[pos])
+                            print(throughput, "throughput")
                         except:
                             pass
 
@@ -144,9 +146,15 @@ def gather_throughput(
 
                 if not flag:
                     print(system + "/" + name + " " + filename + ": something wrong")
+
+        # return int(round(total_throughput / count, 2))
+        print(config_name, int(round(total_throughput / count, 2)))
         return int(round(total_throughput / count, 2)), key
+        # df.at[config_name, column_name] = int(round(total_throughput / count, 2))
     else:
-        return 0, key
+        print(config_name, column_name)
+        df.at[config_name, column_name] = 0
+        return -1, key
 
 
 def gather_bs(
@@ -168,6 +176,11 @@ def gather_bs(
         list_system[system][0][1]
     )
 
+def remove_regex_from_desc(desc):
+    pattern = re.compile(r'\^\.\*(.*?)\.\*\$$')
+    match = pattern.search(desc)
+
+    return " ".join(match.group(1).strip().rstrip(":").strip().split("_")) if match else None
 
 def main():
     parser = argparse.ArgumentParser(description="Gather benchmark results.")
@@ -240,7 +253,7 @@ def main():
             version = list_system[key][0][0]
             config_name = list_system[key][1]
             for test_name, value in sorted(list_test[version].items()):
-                throughput, key = gather_throughput(
+                throughput, throughput_description = gather_throughput(
                     list_test,
                     list_system,
                     test_name,
@@ -250,7 +263,10 @@ def main():
                     version,
                     args.path,
                 )
-                throughputs[test_name] = f"{throughput} {key}"
+                if throughput == -1:
+                    throughputs[test_name] = f"Model { test_name } did not run in latest run"
+                else:
+                    throughputs[test_name] = f"{throughput} {remove_regex_from_desc(throughput_description)}"
                 gather_bs(
                     list_test,
                     list_system,
