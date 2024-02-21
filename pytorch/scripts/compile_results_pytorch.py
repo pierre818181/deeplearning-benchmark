@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import subprocess
 import sys
 import re
 import argparse
@@ -179,57 +180,84 @@ def compile_results():
     version = 1
     path = "/results"
 
-    if precision == "fp32":
-        list_test = list_test_fp32
-    elif precision == "fp16":
-        list_test = list_test_fp16
-    else:
-        sys.exit(
-            "Wrong precision: " + precision + ", choose between fp32 and fp16"
-        )
+    try:
+        if precision == "fp32":
+            list_test = list_test_fp32
+        elif precision == "fp16":
+            list_test = list_test_fp16
+        else:
+            sys.exit(
+                "Wrong precision: " + precision + ", choose between fp32 and fp16"
+            )
 
-    if system == "single":
-        list_system = list_system_single
-    elif system == "multiple":
-        list_system = list_system_multiple
+        if system == "single":
+            list_system = list_system_single
+        elif system == "multiple":
+            list_system = list_system_multiple
 
-    columns = []
-    columns.append("num_gpu")
-    columns.append("watt")
-    columns.append("price")
+        columns = []
+        columns.append("num_gpu")
+        columns.append("watt")
+        columns.append("price")
 
-    for test_name, value in sorted(list_test[version].items()):
-        columns.append(list_test[version][test_name][0])
-    list_configs = [list_system[key][1] for key in list_system]
+        for test_name, value in sorted(list_test[version].items()):
+            columns.append(list_test[version][test_name][0])
+        list_configs = [list_system[key][1] for key in list_system]
 
-    df_throughput = pd.DataFrame(index=list_configs, columns=columns)
-    df_throughput = df_throughput.fillna(-1.0)
+        df_throughput = pd.DataFrame(index=list_configs, columns=columns)
+        df_throughput = df_throughput.fillna(-1.0)
 
-    throughputs = {}
-    throughput_errors = []
-    for key in list_system:
-        if key == os.environ["GPU_TYPE"]:
-            version = list_system[key][0][0]
-            config_name = list_system[key][1]
-            for test_name, value in sorted(list_test[version].items()):
-                throughput, throughput_description, errors = gather_throughput(
-                    list_test,
-                    list_system,
-                    test_name,
-                    key,
-                    config_name,
-                    df_throughput,
-                    version,
-                    path,
-                )
-                if errors:
-                    for err in errors:
-                        throughput_errors.append(err)
-                else:
-                    throughputs[test_name] = f"{throughput} {parse_desc(throughput_description)}"
+        throughputs = {}
+        throughput_errors = []
+        for key in list_system:
+            if key == os.environ["GPU_TYPE"]:
+                version = list_system[key][0][0]
+                config_name = list_system[key][1]
+                for test_name, value in sorted(list_test[version].items()):
+                    throughput, throughput_description, errors = gather_throughput(
+                        list_test,
+                        list_system,
+                        test_name,
+                        key,
+                        config_name,
+                        df_throughput,
+                        version,
+                        path,
+                    )
+                    if errors:
+                        for err in errors:
+                            throughput_errors.append(err)
+                    else:
+                        throughputs[test_name] = f"{throughput} {parse_desc(throughput_description)}"
 
-    print(throughputs, throughput_errors)
-    return throughputs
+        print(throughputs, throughput_errors)
+        return throughputs, throughput_errors
+    except Exception as e: 
+        return {}, [str(e)]
+
+def send_error_resp(error, message):
+    pass
+
+def send_throughput_resp(throughputs, errors):
+    pass
+
+tests_to_run = ["bert_base_squad_fp32", "bert_large_squad_fp32", "ssd_fp32", "ncf_fp32"]
+
+def run_tests():
+    for test in tests_to_run:
+        # TODO: fetch this from the env var. Format for this command:
+        # -- ./run_benchmark.sh: the script that runs the benchmark
+        # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
+        # -- bert_base_squad_fp32: the name of the model to test it with
+        command = ["./run_benchmark.sh", "8x24GB", test, "300"]
+        result = subprocess.run(command, text=True, capture_output=True)
+        if result.returncode != 0:
+            send_error_resp("Error:", result.stderr)
+            return
+    throughputs, runtime_errors = compile_results()
+    
+    print(throughputs)
+    send_throughput_resp(throughputs, runtime_errors)
 
 if __name__ == "__main__":
     compile_results()
