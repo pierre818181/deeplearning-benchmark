@@ -17,58 +17,34 @@ import pandas as pd
 # price per gpu
 
 list_system_single = {
-    "QuadroRTX8000_v1": ([1, 1], "Quadro RTX 8000", 260, 6037.5),
-    "LambdaCloud_V100_16GB_v1": ([1, 1], "LambdaCloud V100 16GB", 300, 9937.5),
-    "3090_v1": ([1, 1], "RTX 3090", 350, 2750),
-    "LambdaCloud_A10_v1": ([1, 1], "LambdaCloud A10", 150, 3125),
-    "LambdaCloud_A100_40GB_PCIe_v1": (
-        [1, 1],
-        "LambdaCloud A100 40GB PCIe",
-        250,
-        10437.50,
-    ),
-    # 'A100_40GB_PCIe_v1': ([1, 1], 'A100 40GB PCIe', 250, 12785),
-    # 'A100_40GB_SXM4_v1': ([1, 1], 'A100 40GB SXM4', 250, 14571),
-    "A100_80GB_PCIe_v1": ([1, 1], "A100 80GB PCIe", 300, 13287.50),
-    "A100_80GB_SXM4_v1": ([1, 1], "A100 80GB SXM4", 400, 16250),
-    "AdaA6000_v1": ([1, 1], "RTX 6000 Ada", 300, 7680),
-    "A6000_v1": ([1, 1], "RTX A6000", 300, 4437.50),
-    "4090_v1": ([1, 1], "RTX 4090", 450, 2125),
-    # 'H100_80GB_PCIe_v1': ([1, 1], 'H100 80GB PCIe Gen4', 350, 35714),
-    "H100_80GB_PCIe5_v1": ([1, 1], "H100 80GB PCIe Gen5", 350, 30918),
-    "LambdaCloud_H100_80GB_PCIe5_v1": ([1, 1], "LambdaCloud H100 80GB PCIe Gen5", 350, 30918),
-    "H100_80GB_SXM5_v1": ([1, 1], "H100 80GB SXM5", 700, 36718.75),
+    "8x24GB": ([1, 8], "Runpod 8x 24GB", 100, 100),
 }
 
 list_system_multiple = {
-    "LambdaCloud_2xV100_16GB_v1": ([1, 2], "LambdaCloud 2x V100 16GB", 300, 9937.5),
-    "2xAdaA6000_v1": ([1, 2], "2x RTX 6000 Ada", 300, 7680),
-    "2xA6000_v1": ([1, 2], "2x RTX A6000", 300, 4437.50),
-    "2x3090_v1": ([1, 2], "2x RTX 3090", 350, 2750),
-    "2x4090_v1": ([1, 2], "2x RTX 4090", 450, 2125),
-    # '2xA100_40GB_SXM4_v1': ([1, 2], '2xA100 40GB SXM4', 250, 14571),
-    "2xA100_80GB_PCIe_v1": ([1, 2], "2x A100 80GB PCIe", 300, 13287.50),
-    "2xA100_80GB_SXM4_v1": ([1, 2], "2x A100 80GB SXM4", 400, 16250),
-    #'2xH100_80GB_PCIe_v1': ([1, 2], '2x H100 80GB PCIe Gen4', 350, 35714),
-    "2xH100_80GB_PCIe5_v1": ([1, 2], "2x H100 80GB PCIe Gen5", 350, 30918),
-    "2xH100_80GB_SXM5_v1": ([1, 2], "2x H100 80GB SXM5", 700, 36718.75),
-    "LambdaCloud_4xV100_16GB_v1": ([1, 4], "LambdaCloud 4xV100 16GB", 300, 9937.5),
-    # '4xA100_40GB_SXM4_v1': ([1, 4], '4xA100 40GB SXM4', 250, 14571),
-    #'4xA6000_v1': ([1, 4], '4x RTX A6000', 300, 5785),
-    "4xAdaA6000_v1": ([1, 4], "4x RTX 6000 Ada", 300, 7680),
-    "4xA100_80GB_SXM4_v1": ([1, 4], "4x A100 80GB SXM4", 400, 16250),
-    # '4xH100_80GB_PCIe_v1': ([1, 4], '4x H100 80GB PCIe Gen4', 350, 35714),
-    "4xH100_80GB_PCIe5_v1": ([1, 4], "4x H100 80GB PCIe Gen5", 350, 30918),
-    "4xH100_80GB_SXM5_v1": ([1, 4], "4x H100 80GB SXM5", 700, 36718.75),
-    "LambdaCloud_8xV100_16GB_v1": ([1, 8], "LambdaCloud 8xV100 16GB", 300, 9937.5),
-    # '8xA100_40GB_SXM4_v1': ([1, 8], '8xA100 40GB SXM4', 250, 14571),
-    "8xAdaA6000_v1": ([1, 8], "8x RTX 6000 Ada", 300, 7680),
-    "8xA100_80GB_SXM4_v1": ([1, 8], "8x A100 80GB SXM4", 400, 16250),
-    # '8xH100_80GB_PCIe_v1': ([1, 8], '8x H100 80GB PCIe Gen4', 350, 35714),
-    "8xH100_80GB_PCIe5_v1": ([1, 8], "8x H100 80GB PCIe Gen5", 350, 30918),
-    "8xH100_80GB_SXM5_v1": ([1, 8], "8x H100 80GB SXM5", 700, 36718.75),
-    "LambdaCloud_8xH100_80GB_SXM5_v1": ([1, 8], "LambdaCloud 8x H100 80GB SXM5", 700, 36718.75),
+    "16GB": ([1, 1], "Runpod 1x 16GB", 100, 100),
+    "2x16GB": ([1, 2], "Runpod 1x 16GB", 100, 100),
+    "4x16GB": ([1, 4], "Runpod 1x 16GB", 100, 100),
+    "8x16GB": ([1, 8], "Runpod 8x 16GB", 100, 100),
+
+    "24GB": ([1, 1], "Runpod 1x 24GB", 100, 100),
+    "2x24GB": ([1, 2], "Runpod 1x 24GB", 100, 100),
+    "4x24GB": ([1, 4], "Runpod 1x 24GB", 100, 100),
     "8x24GB": ([1, 8], "Runpod 8x 24GB", 100, 100),
+
+    "40GB": ([1, 1], "Runpod 1x 40GB", 100, 100),
+    "2x40GB": ([1, 2], "Runpod 1x 40GB", 100, 100),
+    "4x40GB": ([1, 4], "Runpod 1x 40GB", 100, 100),
+    "8x40GB": ([1, 8], "Runpod 8x 40GB", 100, 100),
+
+    "48GB": ([1, 1], "Runpod 1x 48GB", 100, 100),
+    "2x48GB": ([1, 2], "Runpod 1x 48GB", 100, 100),
+    "4x48GB": ([1, 4], "Runpod 1x 48GB", 100, 100),
+    "8x48GB": ([1, 8], "Runpod 8x 48GB", 100, 100),
+
+    "80GB": ([1, 1], "Runpod 1x 80GB", 100, 100),
+    "2x80GB": ([1, 2], "Runpod 1x 80GB", 100, 100),
+    "4x80GB": ([1, 4], "Runpod 1x 80GB", 100, 100),
+    "8x80GB": ([1, 8], "Runpod 8x 80GB", 100, 100),
 }
 list_test_fp32 = [
     # version 0: nvcr.io/nvidia/pytorch:20.01-py3 and 20.10-py3
@@ -172,10 +148,6 @@ def gather_throughput(
         df.at[config_name, column_name] = 0
 
     df.at[config_name, "num_gpu"] = list_system[system][0][1]
-    df.at[config_name, "watt"] = list_system[system][2] * int(list_system[system][0][1])
-    df.at[config_name, "price"] = list_system[system][3] * int(
-        list_system[system][0][1]
-    )
 
 
 def gather_bs(
@@ -264,29 +236,30 @@ def main():
     df_bs = pd.DataFrame(index=list_configs, columns=columns)
 
     for key in list_system:
-        version = list_system[key][0][0]
-        config_name = list_system[key][1]
-        for test_name, value in sorted(list_test[version].items()):
-            gather_throughput(
-                list_test,
-                list_system,
-                test_name,
-                key,
-                config_name,
-                df_throughput,
-                version,
-                args.path,
-            )
-            gather_bs(
-                list_test,
-                list_system,
-                test_name,
-                key,
-                config_name,
-                df_bs,
-                version,
-                args.path,
-            )
+        if key == os.environ["GPU_TYPE"]:
+            version = list_system[key][0][0]
+            config_name = list_system[key][1]
+            for test_name, value in sorted(list_test[version].items()):
+                gather_throughput(
+                    list_test,
+                    list_system,
+                    test_name,
+                    key,
+                    config_name,
+                    df_throughput,
+                    version,
+                    args.path,
+                )
+                gather_bs(
+                    list_test,
+                    list_system,
+                    test_name,
+                    key,
+                    config_name,
+                    df_bs,
+                    version,
+                    args.path,
+                )
 
     df_throughput.index.name = "name_gpu"
     df_throughput.to_csv("pytorch-train-throughput-" + args.precision + ".csv")
