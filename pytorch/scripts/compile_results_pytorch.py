@@ -68,27 +68,13 @@ list_system_multiple = {
     "8xH100_80GB_PCIe5_v1": ([1, 8], "8x H100 80GB PCIe Gen5", 350, 30918),
     "8xH100_80GB_SXM5_v1": ([1, 8], "8x H100 80GB SXM5", 700, 36718.75),
     "LambdaCloud_8xH100_80GB_SXM5_v1": ([1, 8], "LambdaCloud 8x H100 80GB SXM5", 700, 36718.75),
+    "8x24GB": ([1, 8], "Runpod 8x 24GB", 100, 100),
 }
 list_test_fp32 = [
     # version 0: nvcr.io/nvidia/pytorch:20.01-py3 and 20.10-py3
     {
         "PyTorch_SSD_FP32": ("ssd", "^.*Training performance =.*$", -2),
-        "PyTorch_resnet50_FP32": ("resnet50", "^.*Summary: train.loss.*$", -2),
-        "PyTorch_maskrcnn_FP32": ("maskrcnn", "^.*Training perf is:.*$", -2),
-        "PyTorch_gnmt_FP32": ("gnmt", "^.*Training:.*$", -4),
         "PyTorch_ncf_FP32": ("ncf", "^.*best_train_throughput:.*$", -1),
-        "PyTorch_transformerxlbase_FP32": (
-            "transformerxlbase",
-            "^.*Training throughput:.*$",
-            -2,
-        ),
-        "PyTorch_transformerxllarge_FP32": (
-            "transformerxllarge",
-            "^.*Training throughput:.*$",
-            -2,
-        ),
-        "PyTorch_tacotron2_FP32": ("tacotron2", "^.*train_epoch_avg_items/sec:.*$", -1),
-        "PyTorch_waveglow_FP32": ("waveglow", "^.*train_epoch_avg_items/sec:.*$", -1),
         "PyTorch_bert_large_squad_FP32": (
             "bert_large_squad",
             "^.*training throughput:.*$",
@@ -103,21 +89,7 @@ list_test_fp32 = [
     # version 1: nvcr.io/nvidia/pytorch:22.09-py3
     {
         "PyTorch_SSD_FP32": ("ssd", "^.*Average images/sec:.*$", -1),
-        "PyTorch_resnet50_FP32": ("resnet50", "^.*Summary: train.loss.*$", 11),
-        "PyTorch_gnmt_FP32": ("gnmt", "^.*Training:.*$", 4),
         "PyTorch_ncf_FP32": ("ncf", "^.*best_train_throughput.*$", 7),
-        "PyTorch_transformerxlbase_FP32": (
-            "transformerxlbase",
-            "^.*Training throughput:.*$",
-            -2,
-        ),
-        "PyTorch_transformerxllarge_FP32": (
-            "transformerxllarge",
-            "^.*Training throughput:.*$",
-            -2,
-        ),
-        "PyTorch_tacotron2_FP32": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
-        "PyTorch_waveglow_FP32": ("waveglow", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP32": (
             "bert_large_squad",
             "^.*training_sequences_per_second :.*$",
@@ -135,22 +107,7 @@ list_test_fp16 = [
     # version 0: nvcr.io/nvidia/pytorch:20.01-py3 and 20.10-py3
     {
         "PyTorch_SSD_AMP": ("ssd", "^.*Training performance =.*$", -2),
-        "PyTorch_resnet50_FP16": ("resnet50", "^.*Summary: train.loss.*$", -2),
-        "PyTorch_maskrcnn_FP16": ("maskrcnn", "^.*Training perf is:.*$", -2),
-        "PyTorch_gnmt_FP16": ("gnmt", "^.*Training:.*$", -4),
         "PyTorch_ncf_FP16": ("ncf", "^.*best_train_throughput:.*$", -1),
-        "PyTorch_transformerxlbase_FP16": (
-            "transformerxlbase",
-            "^.*Training throughput:.*$",
-            -2,
-        ),
-        "PyTorch_transformerxllarge_FP16": (
-            "transformerxllarge",
-            "^.*Training throughput:.*$",
-            -2,
-        ),
-        "PyTorch_tacotron2_FP16": ("tacotron2", "^.*train_epoch_avg_items/sec:.*$", -1),
-        "PyTorch_waveglow_FP16": ("waveglow", "^.*train_epoch_avg_items/sec:.*$", -1),
         "PyTorch_bert_large_squad_FP16": (
             "bert_large_squad",
             "^.*training throughput:.*$",
@@ -165,21 +122,7 @@ list_test_fp16 = [
     # version 1: nvcr.io/nvidia/pytorch:22.09-py3
     {
         "PyTorch_SSD_AMP": ("ssd", "^.*Average images/sec:.*$", -1),
-        "PyTorch_resnet50_AMP": ("resnet50", "^.*Summary: train.loss.*$", 11),
-        "PyTorch_gnmt_FP16": ("gnmt", "^.*Training:.*$", 4),
         "PyTorch_ncf_FP16": ("ncf", "^.*best_train_throughput.*$", 7),
-        "PyTorch_transformerxlbase_FP16": (
-            "transformerxlbase",
-            "^.*Training throughput:.*$",
-            -2,
-        ),
-        "PyTorch_transformerxllarge_FP16": (
-            "transformerxllarge",
-            "^.*Training throughput:.*$",
-            -2,
-        ),
-        "PyTorch_tacotron2_FP16": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
-        "PyTorch_waveglow_FP16": ("waveglow", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP16": (
             "bert_large_squad",
             "^.*training_sequences_per_second :.*$",
