@@ -252,10 +252,11 @@ def run_tests():
         command = ["./run_benchmark.sh", "8x24GB", test, "300"]
         result = subprocess.run(command, text=True, capture_output=True)
         if result.returncode != 0:
+            print("something errored", result.stderr)
             send_error_resp("Error:", result.stderr)
             return
     throughputs, runtime_errors = compile_results()
-    
+
     print(throughputs)
     send_throughput_resp(throughputs, runtime_errors)
 
