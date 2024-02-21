@@ -261,4 +261,4 @@ def run_tests():
     send_throughput_resp(throughputs, runtime_errors)
 
 if __name__ == "__main__":
-    compile_results()
+    run_tests()
