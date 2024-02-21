@@ -3,7 +3,7 @@ import os
 import sys
 import re
 import argparse
-
+import requests
 
 import pandas as pd
 
@@ -122,9 +122,8 @@ def gather_throughput(
     path = path_result + "/" + system + "/" + name
     count = 0.000000001
     total_throughput = 0.0
-    print(path)
+    errors = []
     if os.path.exists(path):
-        print(path, "exists")
         for filename in os.listdir(path):
             if filename.endswith(".txt"):
                 flag = False
@@ -132,29 +131,21 @@ def gather_throughput(
                 # Sift through all lines and only keep the last occurrence
                 for i, line in enumerate(open(os.path.join(path, filename))):
                     for match in re.finditer(pattern, line):
-                        # print(match.group().split(' ')) # for debug
                         try:
                             throughput = float(match.group().split(" ")[pos])
-                            print(throughput, "throughput")
                         except:
                             pass
 
                 if throughput > 0:
                     count += 1
                     total_throughput += throughput
-                    flag = True
+                else:
+                    errors.append(f"unknown error - could not parse results for the test and file: { name + ' ' + filename  }")
 
-                if not flag:
-                    print(system + "/" + name + " " + filename + ": something wrong")
-
-        # return int(round(total_throughput / count, 2))
-        print(config_name, int(round(total_throughput / count, 2)))
-        return int(round(total_throughput / count, 2)), key
-        # df.at[config_name, column_name] = int(round(total_throughput / count, 2))
+        return int(round(total_throughput / count, 2)), key, errors
     else:
-        print(config_name, column_name)
-        df.at[config_name, column_name] = 0
-        return -1, key
+        errors.append(f"unknown error - test did not run: {name}")
+        return -1, key, errors
 
 
 def gather_bs(
@@ -176,84 +167,52 @@ def gather_bs(
         list_system[system][0][1]
     )
 
-def remove_regex_from_desc(desc):
+def parse_desc(desc):
     pattern = re.compile(r'\^\.\*(.*?)\.\*\$$')
     match = pattern.search(desc)
 
     return " ".join(match.group(1).strip().rstrip(":").strip().split("_")) if match else None
 
-def main():
-    parser = argparse.ArgumentParser(description="Gather benchmark results.")
+def compile_results():
+    precision = "fp32"
+    system = "multiple"
+    version = 1
+    path = "/results"
 
-    parser.add_argument(
-        "--path", type=str, default="results", help="path that has the results"
-    )
-
-    parser.add_argument(
-        "--precision",
-        type=str,
-        default="fp32",
-        choices=["fp32", "fp16"],
-        help="Choose becnhmark precision",
-    )
-
-    parser.add_argument(
-        "--system",
-        type=str,
-        default="all",
-        choices=["single", "multiple", "all"],
-        help="Choose system type (single or multiple GPUs)",
-    )
-
-    parser.add_argument(
-        "--version",
-        type=int,
-        default=1,
-        choices=[0, 1],
-        help="Choose benchmark version",
-    )
-
-    args = parser.parse_args()
-
-    if args.precision == "fp32":
+    if precision == "fp32":
         list_test = list_test_fp32
-    elif args.precision == "fp16":
+    elif precision == "fp16":
         list_test = list_test_fp16
     else:
         sys.exit(
-            "Wrong precision: " + args.precision + ", choose between fp32 and fp16"
+            "Wrong precision: " + precision + ", choose between fp32 and fp16"
         )
 
-    if args.system == "single":
+    if system == "single":
         list_system = list_system_single
-    elif args.system == "multiple":
+    elif system == "multiple":
         list_system = list_system_multiple
-    else:
-        list_system = {}
-        list_system.update(list_system_single)
-        list_system.update(list_system_multiple)
 
     columns = []
     columns.append("num_gpu")
     columns.append("watt")
     columns.append("price")
 
-    for test_name, value in sorted(list_test[args.version].items()):
-        columns.append(list_test[args.version][test_name][0])
+    for test_name, value in sorted(list_test[version].items()):
+        columns.append(list_test[version][test_name][0])
     list_configs = [list_system[key][1] for key in list_system]
 
     df_throughput = pd.DataFrame(index=list_configs, columns=columns)
     df_throughput = df_throughput.fillna(-1.0)
 
-    df_bs = pd.DataFrame(index=list_configs, columns=columns)
-
     throughputs = {}
+    throughput_errors = []
     for key in list_system:
         if key == os.environ["GPU_TYPE"]:
             version = list_system[key][0][0]
             config_name = list_system[key][1]
             for test_name, value in sorted(list_test[version].items()):
-                throughput, throughput_description = gather_throughput(
+                throughput, throughput_description, errors = gather_throughput(
                     list_test,
                     list_system,
                     test_name,
@@ -261,31 +220,16 @@ def main():
                     config_name,
                     df_throughput,
                     version,
-                    args.path,
+                    path,
                 )
-                if throughput == -1:
-                    throughputs[test_name] = f"Model { test_name } did not run in latest run"
+                if errors:
+                    for err in errors:
+                        throughput_errors.append(err)
                 else:
-                    throughputs[test_name] = f"{throughput} {remove_regex_from_desc(throughput_description)}"
-                gather_bs(
-                    list_test,
-                    list_system,
-                    test_name,
-                    key,
-                    config_name,
-                    df_bs,
-                    version,
-                    args.path,
-                )
+                    throughputs[test_name] = f"{throughput} {parse_desc(throughput_description)}"
 
-    print(throughputs)
-
-    df_throughput.index.name = "name_gpu"
-    df_throughput.to_csv("pytorch-train-throughput-" + args.precision + ".csv")
-
-    df_bs.index.name = "name_gpu"
-    df_bs.to_csv("pytorch-train-bs-" + args.precision + ".csv")
-
+    print(throughputs, throughput_errors)
+    return throughputs
 
 if __name__ == "__main__":
-    main()
+    compile_results()
