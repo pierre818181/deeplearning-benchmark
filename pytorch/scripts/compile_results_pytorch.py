@@ -20,6 +20,7 @@ list_system_single = {
     "8x24GB": ([1, 8], "Runpod 8x 24GB", 100, 100),
 }
 
+# the price and wattage are all arbitrary but we can definitely use it in the future
 list_system_multiple = {
     "16GB": ([1, 1], "Runpod 1x 16GB", 100, 100),
     "2x16GB": ([1, 2], "Runpod 1x 16GB", 100, 100),
@@ -143,11 +144,9 @@ def gather_throughput(
 
                 if not flag:
                     print(system + "/" + name + " " + filename + ": something wrong")
-        df.at[config_name, column_name] = int(round(total_throughput / count, 2))
+        return int(round(total_throughput / count, 2)), key
     else:
-        df.at[config_name, column_name] = 0
-
-    df.at[config_name, "num_gpu"] = list_system[system][0][1]
+        return 0, key
 
 
 def gather_bs(
@@ -235,12 +234,13 @@ def main():
 
     df_bs = pd.DataFrame(index=list_configs, columns=columns)
 
+    throughputs = {}
     for key in list_system:
         if key == os.environ["GPU_TYPE"]:
             version = list_system[key][0][0]
             config_name = list_system[key][1]
             for test_name, value in sorted(list_test[version].items()):
-                gather_throughput(
+                throughput, key = gather_throughput(
                     list_test,
                     list_system,
                     test_name,
@@ -250,6 +250,7 @@ def main():
                     version,
                     args.path,
                 )
+                throughputs[test_name] = f"{throughput} {key}"
                 gather_bs(
                     list_test,
                     list_system,
@@ -260,6 +261,8 @@ def main():
                     version,
                     args.path,
                 )
+
+    print(throughputs)
 
     df_throughput.index.name = "name_gpu"
     df_throughput.to_csv("pytorch-train-throughput-" + args.precision + ".csv")
