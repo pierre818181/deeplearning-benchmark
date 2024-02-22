@@ -258,7 +258,7 @@ def send_throughput_resp(throughputs, errors):
         print("API key not found")
         return
 
-    if os.environ("ENV") == "prod":
+    if os.environ["ENV"] == "prod":
         url = f"https://api.runpod.io/graphql?api_key={api_key}"
     else:
         # TODO: update this before merging
