@@ -261,7 +261,8 @@ def send_throughput_resp(throughputs, errors):
     if os.environ("ENV") == "prod":
         url = f"https://api.runpod.io/graphql?api_key={api_key}"
     else:
-        url = f"https://api.runpod.dev/graphql?api_key={api_key}"
+        # TODO: update this before merging
+        url = f"https://pierre-bastola-api.runpod.dev/graphql?api_key={api_key}"
 
     transport = RequestsHTTPTransport(url=url, use_json=True)
     # Create a GraphQL client using the defined transport
