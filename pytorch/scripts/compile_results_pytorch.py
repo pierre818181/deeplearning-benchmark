@@ -253,7 +253,6 @@ def compile_results():
         return {}, [str(e)]
 
 def send_throughput_resp(throughputs, errors):
-    api_key = os.environ["API_KEY"]
     if not api_key:
         print("API key not found")
         return
@@ -264,48 +263,43 @@ def send_throughput_resp(throughputs, errors):
         # TODO: update this before merging
         url = f"https://pierre-bastola-api.runpod.dev/graphql?api_key={api_key}"
 
-    transport = RequestsHTTPTransport(url=url, use_json=True)
-    # Create a GraphQL client using the defined transport
-    client = Client(transport=transport, fetch_schema_from_transport=True)
-
-
     headers = {
         "Content-Type": "application/json",
     }
 
-    mutation = """
-        mutation RecordBenchmark{{
+    #     mutation MyMutation ($chapterId: ID!, $content: String!, $title: String!) {
+    #     updateChapter(input: {
+    #       where: {
+    #         id: $chapterId
+    #       },
+    #       data: {
+    #         content: $content
+    #         title: $title
+    #       }
+    #     }) {
+    #       chapter{
+    #         title
+    #         id
+    #         content
+    #       }
+    #     }
+    #   }
+    input_fields = 'machineId: "12345",'
+
+    mutation = f"""mutation RecordBenchmark{{
         machineRecordBenchmark(input: {{
-            machineId: "{machineId}",
-            errors: "{errors}",
-            ssdAMP: "{ssdAMP}",
-            ssd32: "{ssd32}",
-            ncf16: "{ncf16}",
-            ncf32: "{ncf32}",
-            bertBase: "{bertBase}",
-            bertLarge: "{bertLarge}",
-            bertBase32: "{bertBase32}",
-            bertLarge32: "{bertLarge32}"
+            {
+                input_fields
+            }
         }})
-    }}
-    """.format(
-        machineId=os.environ["MACHINE_ID"],
-        errors=" ".join(errors),
-        ssdAMP=throughputs.get("ssdAMP", ""),
-        ssd32=throughputs.get("ssd32", ""),
-        ncf16=throughputs.get("ncf16", ""),
-        ncf32=throughputs.get("ncf32", ""),
-        bertBase=throughputs.get("bertBase", ""),
-        bertLarge=throughputs.get("bertLarge", ""),
-        bertBase32=throughputs.get("bertBase32", ""),
-        bertLarge32=throughputs.get("bertLarge32", ""),
-    )
+    }}"""
 
     print("sending mutation", mutation)
 
     data = json.dumps({"query": mutation})
     response = requests.post(url, headers=headers, data=data, timeout=30)
 
+    print(response.text)
     print(response.status_code)
 
 
