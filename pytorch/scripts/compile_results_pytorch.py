@@ -325,20 +325,26 @@ def run_tests():
         # -- bert_base_squad_fp32: the name of the model to test it with
         print(f"starting test {test}")
         command = ["./run_benchmark.sh", "8x24GB", test, "300"]
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        while True:
-            output = process.stdout.readline()
-            if output == '' and process.poll() is not None:
-                print(output, "breaking")
-                break
-            if output:
-                print("output:", output.strip())
 
-        err = process.stderr.read()
-        if err:
-            print("something errored", err.strip())
-            send_throughput_resp({}, [err.strip()])
+        result = subprocess.run(command, text=True, capture_output=True)
+        if result.returncode != 0:
+            print("something errored", result.stderr)
+            send_throughput_resp({}, [result.stderr])
             return
+        # process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # while True:
+        #     output = process.stdout.readline()
+        #     if output == '' and process.poll() is not None:
+        #         print(output, "breaking")
+        #         break
+        #     if output:
+        #         print("output:", output.strip())
+
+        # err = process.stderr.read()
+        # if err:
+        #     print("something errored", err.strip())
+        #     send_throughput_resp({}, [err.strip()])
+        #     return
 
     throughputs, runtime_errors = compile_results()
     send_throughput_resp(throughputs, runtime_errors)
