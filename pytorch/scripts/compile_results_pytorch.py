@@ -332,7 +332,7 @@ def run_tests():
                 print(output, "breaking")
                 break
             if output:
-                print(output.strip())
+                print("output:", output.strip())
 
         err = process.stderr.read()
         if err:
