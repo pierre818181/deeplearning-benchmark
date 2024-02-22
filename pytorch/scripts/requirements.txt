@@ -12,6 +12,7 @@ pandas
 python-dateutil
 pytz
 requests
+requests-toolbelt
 six
 sniffio
 typing_extensions
