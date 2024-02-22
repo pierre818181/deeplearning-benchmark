@@ -8,6 +8,8 @@ import argparse
 import requests
 
 import pandas as pd
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
 
 # naming convention
 # key: config name
@@ -28,22 +30,18 @@ list_system_multiple = {
     "2x16GB": ([1, 2], "Runpod 1x 16GB", 100, 100),
     "4x16GB": ([1, 4], "Runpod 1x 16GB", 100, 100),
     "8x16GB": ([1, 8], "Runpod 8x 16GB", 100, 100),
-
     "24GB": ([1, 1], "Runpod 1x 24GB", 100, 100),
     "2x24GB": ([1, 2], "Runpod 1x 24GB", 100, 100),
     "4x24GB": ([1, 4], "Runpod 1x 24GB", 100, 100),
     "8x24GB": ([1, 8], "Runpod 8x 24GB", 100, 100),
-
     "40GB": ([1, 1], "Runpod 1x 40GB", 100, 100),
     "2x40GB": ([1, 2], "Runpod 1x 40GB", 100, 100),
     "4x40GB": ([1, 4], "Runpod 1x 40GB", 100, 100),
     "8x40GB": ([1, 8], "Runpod 8x 40GB", 100, 100),
-
     "48GB": ([1, 1], "Runpod 1x 48GB", 100, 100),
     "2x48GB": ([1, 2], "Runpod 1x 48GB", 100, 100),
     "4x48GB": ([1, 4], "Runpod 1x 48GB", 100, 100),
     "8x48GB": ([1, 8], "Runpod 8x 48GB", 100, 100),
-
     "80GB": ([1, 1], "Runpod 1x 80GB", 100, 100),
     "2x80GB": ([1, 2], "Runpod 1x 80GB", 100, 100),
     "4x80GB": ([1, 4], "Runpod 1x 80GB", 100, 100),
@@ -153,7 +151,9 @@ def gather_throughput(
                     count += 1
                     total_throughput += throughput
                 else:
-                    errors.append(f"unknown error - could not parse results for the test and file: { name + ' ' + filename  }")
+                    errors.append(
+                        f"unknown error - could not parse results for the test and file: { name + ' ' + filename  }"
+                    )
 
         return int(round(total_throughput / count, 2)), key, errors
     else:
@@ -180,11 +180,17 @@ def gather_bs(
         list_system[system][0][1]
     )
 
+
 def parse_desc(desc):
-    pattern = re.compile(r'\^\.\*(.*?)\.\*\$$')
+    pattern = re.compile(r"\^\.\*(.*?)\.\*\$$")
     match = pattern.search(desc)
 
-    return " ".join(match.group(1).strip().rstrip(":").strip().split("_")) if match else None
+    return (
+        " ".join(match.group(1).strip().rstrip(":").strip().split("_"))
+        if match
+        else None
+    )
+
 
 def compile_results():
     precision = "fp32"
@@ -198,9 +204,7 @@ def compile_results():
         elif precision == "fp16":
             list_test = list_test_fp16
         else:
-            sys.exit(
-                "Wrong precision: " + precision + ", choose between fp32 and fp16"
-            )
+            sys.exit("Wrong precision: " + precision + ", choose between fp32 and fp16")
 
         if system == "single":
             list_system = list_system_single
@@ -240,35 +244,77 @@ def compile_results():
                         for err in errors:
                             throughput_errors.append(err)
                     else:
-                        throughputs[test_name_to_camel_case[test_name]] = f"{throughput} {parse_desc(throughput_description)}"
+                        throughputs[test_name_to_camel_case[test_name]] = (
+                            f"{throughput} {parse_desc(throughput_description)}"
+                        )
 
-        print(throughputs, throughput_errors)
         return throughputs, throughput_errors
-    except Exception as e: 
+    except Exception as e:
         return {}, [str(e)]
 
-def send_error_resp(error, message):
-    pass
-
 def send_throughput_resp(throughputs, errors):
+    api_key = os.environ["API_KEY"]
+    if not api_key:
+        print("API key not found")
+        return
+
     if os.environ("ENV") == "prod":
-        url = "https://api.runpod.io/graphql"
+        url = f"https://api.runpod.io/graphql?api_key={api_key}"
     else:
-        url = "https://api.runpod.dev/graphql"
+        url = f"https://api.runpod.dev/graphql?api_key={api_key}"
 
-    url = f"{ url }/?api_key={ os.environ['API_KEY'] }"
-    requests.post(url, json.dumps({
-        "throughputs": throughputs,
-        "errors": errors,
-    }), headers={
-        "Content-Type": "application/json"
-    })
+    transport = RequestsHTTPTransport(url=url, use_json=True)
+    # Create a GraphQL client using the defined transport
+    client = Client(transport=transport, fetch_schema_from_transport=True)
+
+    mutation = gql(
+        """
+        query GetBooks {
+            books {
+                title
+                author
+            }
+        }
+    """
+    )
+
+    mutation = gql(
+        """
+        mutation RecordBenchmark {
+            machineRecordBenchmark(input: {
+                machineId: {},
+                errors: {},
+                ssdAMP: {},
+                ssd32: {},
+                ncf16: {},
+                ncf32: {},
+                bertBase: {},
+                bertLarge: {},
+                bertBase32: {},
+                bertLarge32: {}
+            })
+        }
+    """.format(
+            os.environ["MACHINE_ID"],
+            " ".join(errors),
+            throughputs.get("ssdAMP", None),
+            throughputs.get("ssd32", None),
+            throughputs.get("ncf16", None),
+            throughputs.get("ncf32", None),
+            throughputs.get("bertBase", None),
+            throughputs.get("bertLarge", None),
+            throughputs.get("bertBase32", None),
+            throughputs.get("bertLarge32", None),
+        )
+    )
+
+    client.execute(mutation)
 
 
-tests_to_run = ["bert_base_squad_fp32", "bert_large_squad_fp32", "ssd_fp32", "ncf_fp32"]
+# tests_to_run = ["bert_base_squad_fp32", "bert_large_squad_fp32", "ssd_fp32", "ncf_fp32"]
 
 # use this for testing
-# tests_to_run = ["bert_base_squad_fp32"]
+tests_to_run = ["bert_base_squad_fp32"]
 
 def run_tests():
     for test in tests_to_run:
@@ -278,13 +324,21 @@ def run_tests():
         # -- bert_base_squad_fp32: the name of the model to test it with
         print(f"starting test {test}")
         command = ["./run_benchmark.sh", "8x24GB", test, "300"]
-        result = subprocess.run(command, text=True, capture_output=True)
-        if result.returncode != 0:
-            print("something errored", result.stderr)
-            send_error_resp("Error:", result.stderr)
-            return
-    throughputs, runtime_errors = compile_results()
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                print(output.strip())
 
+        err = process.stderr.read()
+        if err:
+            print("something errored", err.strip())
+            send_throughput_resp({}, [err.strip()])
+            return
+
+    throughputs, runtime_errors = compile_results()
     send_throughput_resp(throughputs, runtime_errors)
 
 if __name__ == "__main__":
