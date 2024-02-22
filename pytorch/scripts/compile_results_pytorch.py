@@ -329,6 +329,7 @@ def run_tests():
         while True:
             output = process.stdout.readline()
             if output == '' and process.poll() is not None:
+                print(output, "breaking")
                 break
             if output:
                 print(output.strip())
