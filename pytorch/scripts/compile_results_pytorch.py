@@ -281,20 +281,20 @@ def send_throughput_resp(throughputs, errors):
 
     mutation = gql(
         """
-        mutation RecordBenchmark {
-            machineRecordBenchmark(input: {
-                machineId: {},
-                errors: {},
-                ssdAMP: {},
-                ssd32: {},
-                ncf16: {},
-                ncf32: {},
-                bertBase: {},
-                bertLarge: {},
-                bertBase32: {},
-                bertLarge32: {}
-            })
-        }
+        mutation RecordBenchmark{
+machineRecordBenchmark(input: {
+    machineId: {},
+    errors: {},
+    ssdAMP: {},
+    ssd32: {},
+    ncf16: {},
+    ncf32: {},
+    bertBase: {},
+    bertLarge: {},
+    bertBase32: {},
+    bertLarge32: {}
+})
+}
     """.format(
             os.environ["MACHINE_ID"],
             " ".join(errors),
@@ -323,6 +323,7 @@ def run_tests():
     for file in files:
         if not os.path.exists(file):
             send_throughput_resp({}, [f"File not found: { file }"])
+            return
 
     for test in tests_to_run:
         # TODO: fetch this from the env var. Format for this command:
@@ -330,7 +331,7 @@ def run_tests():
         # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
         # -- bert_base_squad_fp32: the name of the model to test it with
         print(f"starting test {test}")
-        command = ["./run_benchmark.sh", "8x24GB", test, "10000"]
+        command = ["./run_benchmark.sh", "8x24GB", test, "2500"]
 
         # result = subprocess.run(command, text=True, capture_output=True)
         # if result.returncode != 0:
