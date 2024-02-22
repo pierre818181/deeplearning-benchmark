@@ -226,7 +226,7 @@ def compile_results():
         throughputs = {}
         throughput_errors = []
         for key in list_system:
-            if key == os.environ["GPU_TYPE"]:
+            if key == os.environ["BENCHMARK_CONFIG"]:
                 version = list_system[key][0][0]
                 config_name = list_system[key][1]
                 for test_name, value in sorted(list_test[version].items()):
@@ -252,6 +252,7 @@ def compile_results():
     except Exception as e:
         return {}, [str(e)]
 
+
 def send_throughput_resp(throughputs, errors):
     api_key = os.environ["API_KEY"]
     if not api_key:
@@ -268,7 +269,9 @@ def send_throughput_resp(throughputs, errors):
         "Content-Type": "application/json",
     }
 
-    input_fields = [f'machineId: "{ os.environ["MACHINE_ID"] }"',]
+    input_fields = [
+        f'machineId: "{ os.environ["MACHINE_ID"] }"',
+    ]
     input_fields.append(f'benchmarkConfig: "{ os.environ["BENCHMARK_CONFIG"]}"')
     for test_name, test_result in throughputs.items():
         input_fields.append(f'{test_name}: "{ test_result }"')
@@ -289,25 +292,46 @@ def send_throughput_resp(throughputs, errors):
     print(response.text)
     print(response.status_code)
 
-
 # TODO: update this
 files = ["/data/bert_base", "/data/bert_large", "/data/squad"]
 
-# tests_to_run = ["bert_base_squad_fp32", "bert_large_squad_fp32", "ssd_fp32", "ncf_fp32"]
-
 # use this for testing
-tests_to_run = ["bert_base_squad_fp32"]
+# tests_to_run = ["bert_base_squad_fp32"]
+
+fp_32_tests = [
+            "bert_base_squad_fp32",
+            "bert_large_squad_fp32",
+            "ssd_fp32",
+            "ncf_fp32",
+        ]
+fp_16_tests = [
+            "bert_base_squad_fp16",
+            "bert_large_squad_fp16",
+            "ssd_amp",
+            "ncf_fp16",
+        ]
+
 
 def run_tests():
     benchmark_config = os.environ["BENCHMARK_CONFIG"]
-    if not benchmark_config:
-        send_throughput_resp({}, ["Test config not found"])
+    timeout = os.environ["TIMEOUT"]
+    api_key = os.environ["API_KEY"]
+    precision = os.environ["PRECISION"]
+    if not benchmark_config or not timeout or not api_key or not precision:
+        send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT"])
         return
 
     for file in files:
         if not os.path.exists(file):
             send_throughput_resp({}, [f"File not found: { file }"])
             return
+        
+    if precision == "fp32":
+        tests_to_run = fp_32_tests
+    elif precision == "fp16":
+        tests_to_run = fp_16_tests
+    else:
+        tests_to_run = fp_32_tests + fp_16_tests
 
     errors = []
     for test in tests_to_run:
@@ -316,17 +340,19 @@ def run_tests():
         # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
         # -- bert_base_squad_fp32: the name of the model to test it with
         print(f"starting test {test}")
-        command = ["./run_benchmark.sh", benchmark_config, test, "2500"]
+        command = ["./run_benchmark.sh", benchmark_config, test, timeout]
 
         # result = subprocess.run(command, text=True, capture_output=True)
         # if result.returncode != 0:
         #     print("something errored", result.stderr)
         #     send_throughput_resp({}, [result.stderr])
         #     return
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
         while True:
             output = process.stdout.readline()
-            if output == '' and process.poll() is not None:
+            if output == "" and process.poll() is not None:
                 print(output, "breaking")
                 break
             if output:
@@ -340,8 +366,8 @@ def run_tests():
             # return
 
     throughputs, runtime_errors = compile_results()
-    print(runtime_errors + errors)
     send_throughput_resp(throughputs, runtime_errors + errors)
+
 
 if __name__ == "__main__":
     run_tests()
