@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import subprocess
 import sys
@@ -114,6 +115,17 @@ list_test_fp16 = [
     },
 ]
 
+test_name_to_camel_case = {
+    "PyTorch_SSD_AMP": "ssdAMP",
+    "PyTorch_ncf_FP16": "ncf16",
+    "PyTorch_bert_large_squad_FP16": "bertLarge",
+    "PyTorch_bert_base_squad_FP16": "bertBase",
+    "PyTorch_SSD_FP32": "ssd32",
+    "PyTorch_ncf_FP32": "ncf32",
+    "PyTorch_bert_large_squad_FP32": "bertLarge32",
+    "PyTorch_bert_base_squad_FP32": "bertBase32",
+}
+
 
 def gather_throughput(
     list_test, list_system, name, system, config_name, df, version, path_result
@@ -228,7 +240,7 @@ def compile_results():
                         for err in errors:
                             throughput_errors.append(err)
                     else:
-                        throughputs[test_name] = f"{throughput} {parse_desc(throughput_description)}"
+                        throughputs[test_name_to_camel_case[test_name]] = f"{throughput} {parse_desc(throughput_description)}"
 
         print(throughputs, throughput_errors)
         return throughputs, throughput_errors
@@ -239,9 +251,24 @@ def send_error_resp(error, message):
     pass
 
 def send_throughput_resp(throughputs, errors):
-    pass
+    if os.environ("ENV") == "prod":
+        url = "https://api.runpod.io/graphql"
+    else:
+        url = "https://api.runpod.dev/graphql"
+
+    url = f"{ url }/?api_key={ os.environ['API_KEY'] }"
+    requests.post(url, json.dumps({
+        "throughputs": throughputs,
+        "errors": errors,
+    }), headers={
+        "Content-Type": "application/json"
+    })
+
 
 tests_to_run = ["bert_base_squad_fp32", "bert_large_squad_fp32", "ssd_fp32", "ncf_fp32"]
+
+# use this for testing
+# tests_to_run = ["bert_base_squad_fp32"]
 
 def run_tests():
     for test in tests_to_run:
@@ -249,6 +276,7 @@ def run_tests():
         # -- ./run_benchmark.sh: the script that runs the benchmark
         # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
         # -- bert_base_squad_fp32: the name of the model to test it with
+        print(f"starting test {test}")
         command = ["./run_benchmark.sh", "8x24GB", test, "300"]
         result = subprocess.run(command, text=True, capture_output=True)
         if result.returncode != 0:
@@ -257,7 +285,6 @@ def run_tests():
             return
     throughputs, runtime_errors = compile_results()
 
-    print(throughputs)
     send_throughput_resp(throughputs, runtime_errors)
 
 if __name__ == "__main__":
