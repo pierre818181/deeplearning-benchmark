@@ -268,29 +268,15 @@ def send_throughput_resp(throughputs, errors):
         "Content-Type": "application/json",
     }
 
-    #     mutation MyMutation ($chapterId: ID!, $content: String!, $title: String!) {
-    #     updateChapter(input: {
-    #       where: {
-    #         id: $chapterId
-    #       },
-    #       data: {
-    #         content: $content
-    #         title: $title
-    #       }
-    #     }) {
-    #       chapter{
-    #         title
-    #         id
-    #         content
-    #       }
-    #     }
-    #   }
-    input_fields = 'machineId: "12345",'
+    input_fields = [f'machineId: "{ os.environ["MACHINE_ID"] }"',]
+    input_fields.append(f'benchmarkConfig: "{ os.environ["BENCHMARK_CONFIG"]}"')
+    for test_name, test_result in throughputs.items():
+        input_fields.append(f'{test_name}: "{ test_result }"')
 
     mutation = f"""mutation RecordBenchmark{{
         machineRecordBenchmark(input: {{
             {
-                input_fields
+                ", ".join(input_fields)
             }
         }})
     }}"""
@@ -313,6 +299,11 @@ files = ["/data/bert_base", "/data/bert_large", "/data/squad"]
 tests_to_run = ["bert_base_squad_fp32"]
 
 def run_tests():
+    benchmark_config = os.environ["BENCHMARK_CONFIG"]
+    if not benchmark_config:
+        send_throughput_resp({}, ["Test config not found"])
+        return
+
     for file in files:
         if not os.path.exists(file):
             send_throughput_resp({}, [f"File not found: { file }"])
@@ -325,7 +316,7 @@ def run_tests():
         # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
         # -- bert_base_squad_fp32: the name of the model to test it with
         print(f"starting test {test}")
-        command = ["./run_benchmark.sh", "8x24GB", test, "2500"]
+        command = ["./run_benchmark.sh", benchmark_config, test, "2500"]
 
         # result = subprocess.run(command, text=True, capture_output=True)
         # if result.returncode != 0:
