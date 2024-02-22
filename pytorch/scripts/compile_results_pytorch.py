@@ -268,50 +268,46 @@ def send_throughput_resp(throughputs, errors):
     # Create a GraphQL client using the defined transport
     client = Client(transport=transport, fetch_schema_from_transport=True)
 
-    mutation = gql(
-        """
-        query GetBooks {
-            books {
-                title
-                author
-            }
-        }
-    """
-    )
 
-    mutation = gql(
-        """
-        mutation RecordBenchmark{
-machineRecordBenchmark(input: {
-    machineId: {},
-    errors: {},
-    ssdAMP: {},
-    ssd32: {},
-    ncf16: {},
-    ncf32: {},
-    bertBase: {},
-    bertLarge: {},
-    bertBase32: {},
-    bertLarge32: {}
-})
-}
+    headers = {
+        "Content-Type": "application/json",
+    }
+
+    mutation = """
+        mutation RecordBenchmark{{
+        machineRecordBenchmark(input: {{
+            machineId: "{machineId}",
+            errors: "{errors}",
+            ssdAMP: "{ssdAMP}",
+            ssd32: "{ssd32}",
+            ncf16: "{ncf16}",
+            ncf32: "{ncf32}",
+            bertBase: "{bertBase}",
+            bertLarge: "{bertLarge}",
+            bertBase32: "{bertBase32}",
+            bertLarge32: "{bertLarge32}"
+        }})
+    }}
     """.format(
-            os.environ["MACHINE_ID"],
-            " ".join(errors),
-            throughputs.get("ssdAMP", None),
-            throughputs.get("ssd32", None),
-            throughputs.get("ncf16", None),
-            throughputs.get("ncf32", None),
-            throughputs.get("bertBase", None),
-            throughputs.get("bertLarge", None),
-            throughputs.get("bertBase32", None),
-            throughputs.get("bertLarge32", None),
-        )
+        machineId=os.environ["MACHINE_ID"],
+        errors=" ".join(errors),
+        ssdAMP=throughputs.get("ssdAMP", "None"),
+        ssd32=throughputs.get("ssd32", "None"),
+        ncf16=throughputs.get("ncf16", "None"),
+        ncf32=throughputs.get("ncf32", "None"),
+        bertBase=throughputs.get("bertBase", "None"),
+        bertLarge=throughputs.get("bertLarge", "None"),
+        bertBase32=throughputs.get("bertBase32", "None"),
+        bertLarge32=throughputs.get("bertLarge32", "None"),
     )
 
-    client.execute(mutation)
+    data = json.dumps({"query": mutation})
+    response = requests.post(url, headers=headers, data=data, timeout=30)
+
+    print(response.status_code)
 
 
+# TODO: update this
 files = ["/data/bert_base", "/data/bert_large", "/data/squad"]
 
 # tests_to_run = ["bert_base_squad_fp32", "bert_large_squad_fp32", "ssd_fp32", "ncf_fp32"]
