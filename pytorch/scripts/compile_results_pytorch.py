@@ -321,6 +321,7 @@ def run_tests():
             send_throughput_resp({}, [f"File not found: { file }"])
             return
 
+    errors = []
     for test in tests_to_run:
         # TODO: fetch this from the env var. Format for this command:
         # -- ./run_benchmark.sh: the script that runs the benchmark
@@ -346,11 +347,12 @@ def run_tests():
         err = process.stderr.read()
         if err:
             print("something errored", err.strip())
-            send_throughput_resp({}, [err.strip()])
-            return
+            errors.append(err.strip())
+            # send_throughput_resp({}, [err.strip()])
+            # return
 
     throughputs, runtime_errors = compile_results()
-    send_throughput_resp(throughputs, runtime_errors)
+    send_throughput_resp(throughputs, runtime_errors + errors)
 
 if __name__ == "__main__":
     run_tests()
