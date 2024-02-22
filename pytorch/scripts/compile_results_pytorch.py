@@ -291,15 +291,17 @@ def send_throughput_resp(throughputs, errors):
     """.format(
         machineId=os.environ["MACHINE_ID"],
         errors=" ".join(errors),
-        ssdAMP=throughputs.get("ssdAMP", "None"),
-        ssd32=throughputs.get("ssd32", "None"),
-        ncf16=throughputs.get("ncf16", "None"),
-        ncf32=throughputs.get("ncf32", "None"),
-        bertBase=throughputs.get("bertBase", "None"),
-        bertLarge=throughputs.get("bertLarge", "None"),
-        bertBase32=throughputs.get("bertBase32", "None"),
-        bertLarge32=throughputs.get("bertLarge32", "None"),
+        ssdAMP=throughputs.get("ssdAMP", ""),
+        ssd32=throughputs.get("ssd32", ""),
+        ncf16=throughputs.get("ncf16", ""),
+        ncf32=throughputs.get("ncf32", ""),
+        bertBase=throughputs.get("bertBase", ""),
+        bertLarge=throughputs.get("bertLarge", ""),
+        bertBase32=throughputs.get("bertBase32", ""),
+        bertLarge32=throughputs.get("bertLarge32", ""),
     )
+
+    print("sending mutation", mutation)
 
     data = json.dumps({"query": mutation})
     response = requests.post(url, headers=headers, data=data, timeout=30)
@@ -352,6 +354,7 @@ def run_tests():
             # return
 
     throughputs, runtime_errors = compile_results()
+    print(runtime_errors + errors)
     send_throughput_resp(throughputs, runtime_errors + errors)
 
 if __name__ == "__main__":
