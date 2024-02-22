@@ -253,6 +253,7 @@ def compile_results():
         return {}, [str(e)]
 
 def send_throughput_resp(throughputs, errors):
+    api_key = os.environ["API_KEY"]
     if not api_key:
         print("API key not found")
         return
