@@ -341,6 +341,10 @@ def run_tests():
                 print(output, "breaking")
                 break
             if output:
+                if "CUDA error: invalid device ordinal" in output:
+                    errors.append("CUDA error: invalid device ordinal. This most likely means that the system does not have the required number of GPUs")
+                    send_throughput_resp({}, errors)
+                    return
                 print("output:", output.strip())
 
         err = process.stderr.read()
