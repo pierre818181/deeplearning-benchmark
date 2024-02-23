@@ -51,7 +51,7 @@ list_test_fp32 = [
     # version 0: nvcr.io/nvidia/pytorch:20.01-py3 and 20.10-py3
     {
         "PyTorch_SSD_FP32": ("ssd", "^.*Training performance =.*$", -2),
-        "PyTorch_ncf_FP32": ("ncf", "^.*best_train_throughput:.*$", -1),
+        "PyTorch_tacotron2_FP32": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP32": (
             "bert_large_squad",
             "^.*training throughput:.*$",
@@ -66,7 +66,7 @@ list_test_fp32 = [
     # version 1: nvcr.io/nvidia/pytorch:22.09-py3
     {
         "PyTorch_SSD_FP32": ("ssd", "^.*Average images/sec:.*$", -1),
-        "PyTorch_ncf_FP32": ("ncf", "^.*best_train_throughput.*$", 7),
+        "PyTorch_tacotron2_FP32": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP32": (
             "bert_large_squad",
             "^.*training_sequences_per_second :.*$",
@@ -84,7 +84,7 @@ list_test_fp16 = [
     # version 0: nvcr.io/nvidia/pytorch:20.01-py3 and 20.10-py3
     {
         "PyTorch_SSD_AMP": ("ssd", "^.*Training performance =.*$", -2),
-        "PyTorch_ncf_FP16": ("ncf", "^.*best_train_throughput:.*$", -1),
+        "PyTorch_tacotron2_FP16": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP16": (
             "bert_large_squad",
             "^.*training throughput:.*$",
@@ -99,7 +99,7 @@ list_test_fp16 = [
     # version 1: nvcr.io/nvidia/pytorch:22.09-py3
     {
         "PyTorch_SSD_AMP": ("ssd", "^.*Average images/sec:.*$", -1),
-        "PyTorch_ncf_FP16": ("ncf", "^.*best_train_throughput.*$", 7),
+        "PyTorch_tacotron2_FP16": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP16": (
             "bert_large_squad",
             "^.*training_sequences_per_second :.*$",
@@ -115,11 +115,11 @@ list_test_fp16 = [
 
 test_name_to_camel_case = {
     "PyTorch_SSD_AMP": "ssdAMP",
-    "PyTorch_ncf_FP16": "ncf16",
+    "PyTorch_tacotron2_FP16": "tacotron16",
     "PyTorch_bert_large_squad_FP16": "bertLarge",
     "PyTorch_bert_base_squad_FP16": "bertBase",
     "PyTorch_SSD_FP32": "ssd32",
-    "PyTorch_ncf_FP32": "ncf32",
+    "PyTorch_tacotron2_FP32": "tacotron32",
     "PyTorch_bert_large_squad_FP32": "bertLarge32",
     "PyTorch_bert_base_squad_FP32": "bertBase32",
 }
@@ -299,16 +299,16 @@ files = ["/data/bert_base", "/data/bert_large", "/data/squad"]
 # tests_to_run = ["bert_base_squad_fp32"]
 
 fp_32_tests = [
-            # "bert_base_squad_fp32",
-            # "bert_large_squad_fp32",
-            # "ssd_fp32",
-            "ncf_fp32",
+            "bert_base_squad_fp32",
+            "bert_large_squad_fp32",
+            "ssd_fp32",
+            "tacotron2_fp32",
         ]
 fp_16_tests = [
             "bert_base_squad_fp16",
             "bert_large_squad_fp16",
             "ssd_amp",
-            "ncf_fp16",
+            "tacotron2_fp16",
         ]
 
 
