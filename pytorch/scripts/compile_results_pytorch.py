@@ -304,6 +304,7 @@ fp_16_tests = [
             # "tacotron2_fp16",
         ]
 
+datasets = ["bert", "object_detection"]
 
 def run_tests():
     benchmark_config = os.environ.get("BENCHMARK_CONFIG")
@@ -315,6 +316,31 @@ def run_tests():
     if not benchmark_config or not timeout or not api_key or not precision or not machine_id or not env:
         send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, API_KEY, PRECISION, MACHINE_ID, ENV"])
         return
+    
+    for ds in datasets:
+        cmd = ["./run_prepare.sh", ds]
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        while True:
+            output = process.stdout.readline()
+            if output == "" and process.poll() is not None:
+                print(output, f"completed downloading dataset: { ds }")
+                break
+            if output:
+                print(output.strip())
+
+    move_dataset_cmd = ["cp", "-r", "/data", "/workspace/data"]
+    process = subprocess.Popen(
+        move_dataset_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    while True:
+        output = process.stdout.readline()
+        if output == "" and process.poll() is not None:
+            print(output, f"completed moving dataset to the working directory")
+            break
+        if output:
+            print(output.strip())
         
     if precision == "fp32":
         tests_to_run = fp_32_tests
@@ -345,7 +371,7 @@ def run_tests():
                     errors.append("CUDA error: invalid device ordinal. This most likely means that the system does not have the required number of GPUs")
                     send_throughput_resp({}, errors)
                     return
-                print("output:", output.strip())
+                print(output.strip())
 
         err = process.stderr.read()
         if err:
