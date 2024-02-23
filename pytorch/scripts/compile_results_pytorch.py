@@ -313,12 +313,14 @@ fp_16_tests = [
 
 
 def run_tests():
-    benchmark_config = os.environ["BENCHMARK_CONFIG"]
-    timeout = os.environ["TIMEOUT"]
-    api_key = os.environ["API_KEY"]
-    precision = os.environ["PRECISION"]
-    if not benchmark_config or not timeout or not api_key or not precision:
-        send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT"])
+    benchmark_config = os.environ.get("BENCHMARK_CONFIG")
+    timeout = os.environ.get("TIMEOUT")
+    api_key = os.environ.get("API_KEY")
+    precision = os.environ.get("PRECISION")
+    machine_id = os.environ.get("MACHINE_ID")
+    env = os.environ.get("ENV")
+    if not benchmark_config or not timeout or not api_key or not precision or not machine_id or not env:
+        send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, API_KEY, PRECISION, MACHINE_ID, ENV"])
         return
 
     for file in files:
@@ -342,11 +344,6 @@ def run_tests():
         print(f"starting test {test}")
         command = ["./run_benchmark.sh", benchmark_config, test, timeout]
 
-        # result = subprocess.run(command, text=True, capture_output=True)
-        # if result.returncode != 0:
-        #     print("something errored", result.stderr)
-        #     send_throughput_resp({}, [result.stderr])
-        #     return
         process = subprocess.Popen(
             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
