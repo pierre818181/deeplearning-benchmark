@@ -192,20 +192,12 @@ def parse_desc(desc):
     )
 
 
-def compile_results():
-    precision = "fp32"
+def compile_results(list_test, precision):
     system = "multiple"
     version = 1
     path = "/results"
 
     try:
-        if precision == "fp32":
-            list_test = list_test_fp32
-        elif precision == "fp16":
-            list_test = list_test_fp16
-        else:
-            sys.exit("Wrong precision: " + precision + ", choose between fp32 and fp16")
-
         if system == "single":
             list_system = list_system_single
         elif system == "multiple":
@@ -273,6 +265,7 @@ def send_throughput_resp(throughputs, errors):
         f'machineId: "{ os.environ["MACHINE_ID"] }"',
     ]
     input_fields.append(f'benchmarkConfig: "{ os.environ["BENCHMARK_CONFIG"]}"')
+    input_fields.append(f'errors: "{", ".join(errors)}"')
     for test_name, test_result in throughputs.items():
         input_fields.append(f'{test_name}: "{ test_result }"')
 
@@ -293,7 +286,7 @@ def send_throughput_resp(throughputs, errors):
     print(response.status_code)
 
 # TODO: update this
-files = ["/data/bert_base", "/data/bert_large", "/data/squad"]
+# files = ["/data/bert_base", "/data/bert_large", "/data/squad"]
 
 # use this for testing
 # tests_to_run = ["bert_base_squad_fp32"]
@@ -302,13 +295,13 @@ fp_32_tests = [
             "bert_base_squad_fp32",
             "bert_large_squad_fp32",
             "ssd_fp32",
-            "tacotron2_fp32",
+            # "tacotron2_fp32",
         ]
 fp_16_tests = [
             "bert_base_squad_fp16",
             "bert_large_squad_fp16",
             "ssd_amp",
-            "tacotron2_fp16",
+            # "tacotron2_fp16",
         ]
 
 
@@ -322,11 +315,6 @@ def run_tests():
     if not benchmark_config or not timeout or not api_key or not precision or not machine_id or not env:
         send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, API_KEY, PRECISION, MACHINE_ID, ENV"])
         return
-
-    for file in files:
-        if not os.path.exists(file):
-            send_throughput_resp({}, [f"File not found: { file }"])
-            return
         
     if precision == "fp32":
         tests_to_run = fp_32_tests
@@ -362,7 +350,7 @@ def run_tests():
             # send_throughput_resp({}, [err.strip()])
             # return
 
-    throughputs, runtime_errors = compile_results()
+    throughputs, runtime_errors = compile_results(tests_to_run, precision)
     send_throughput_resp(throughputs, runtime_errors + errors)
 
 
