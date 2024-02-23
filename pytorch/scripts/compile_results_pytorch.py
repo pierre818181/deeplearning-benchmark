@@ -299,9 +299,9 @@ files = ["/data/bert_base", "/data/bert_large", "/data/squad"]
 # tests_to_run = ["bert_base_squad_fp32"]
 
 fp_32_tests = [
-            "bert_base_squad_fp32",
-            "bert_large_squad_fp32",
-            "ssd_fp32",
+            # "bert_base_squad_fp32",
+            # "bert_large_squad_fp32",
+            # "ssd_fp32",
             "ncf_fp32",
         ]
 fp_16_tests = [
