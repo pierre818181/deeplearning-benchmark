@@ -320,7 +320,7 @@ def run_tests():
     for ds in datasets:
         cmd = ["/workspace/run_prepare.sh", ds]
         result = subprocess.run(
-            cmd, capture_output=True, text=True, capture_output=True
+            cmd, capture_output=True, text=True,
         )
         if result.returncode == 0:
             print(f"Successfully downloaded dataset: {ds}")
