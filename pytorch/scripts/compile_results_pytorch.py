@@ -192,11 +192,11 @@ def parse_desc(desc):
     )
 
 
-def compile_results(list_test, precision):
+def compile_results(list_test):
     system = "multiple"
     version = 1
     path = "/results"
-
+    print("list test", list_test)
     try:
         if system == "single":
             list_system = list_system_single
@@ -218,7 +218,9 @@ def compile_results(list_test, precision):
         throughputs = {}
         throughput_errors = []
         for key in list_system:
+            print("key", key)
             if key == os.environ["BENCHMARK_CONFIG"]:
+                print(key, os.environ["BENCHMARK_CONFIG"], "key and benchmark config")
                 version = list_system[key][0][0]
                 config_name = list_system[key][1]
                 for test_name, value in sorted(list_test[version].items()):
@@ -379,7 +381,9 @@ def run_tests():
             # send_throughput_resp({}, [err.strip()])
             # return
 
-    throughputs, runtime_errors = compile_results(tests_to_run, precision)
+    throughputs, runtime_errors = compile_results(tests_to_run)
+    print("throughputs", throughputs)
+    print(runtime_errors, "runtime errors")
     send_throughput_resp(throughputs, runtime_errors + errors)
 
 
