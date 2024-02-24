@@ -376,8 +376,8 @@ def run_tests():
         if err:
             print("something errored", err.strip())
             errors.append(err.strip())
-            send_throughput_resp({}, [err.strip()])
-            return
+            # send_throughput_resp({}, [err.strip()])
+            # return
 
     throughputs, runtime_errors = compile_results(tests_to_run, precision)
     send_throughput_resp(throughputs, runtime_errors + errors)
