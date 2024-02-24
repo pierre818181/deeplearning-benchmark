@@ -298,7 +298,7 @@ def send_throughput_resp(throughputs, errors):
 fp_32_tests = [
             "bert_base_squad_fp32",
             "bert_large_squad_fp32",
-            # "ssd_fp32",
+            "ssd_fp32",
             # "tacotron2_fp32",
         ]
 fp_16_tests = [
@@ -308,8 +308,8 @@ fp_16_tests = [
             # "tacotron2_fp16",
         ]
 
-datasets = ["bert"]
-# datasets = ["bert", "object_detection"]
+# datasets = ["bert"]
+datasets = ["bert", "object_detection"]
 
 def run_tests():
     benchmark_config = os.environ.get("BENCHMARK_CONFIG")
@@ -343,13 +343,17 @@ def run_tests():
     else:
         send_throughput_resp({}, [f"Failed to copy dataset: {ds}"])
         return
-        
+
+    list_system = None  
     if precision == "fp32":
         tests_to_run = fp_32_tests
+        list_system = list_system_multiple
     elif precision == "fp16":
         tests_to_run = fp_16_tests
+        list_system = list_system_single
     else:
         tests_to_run = fp_32_tests + fp_16_tests
+        list_system = list_system_multiple
 
     errors = []
     for test in tests_to_run:
@@ -382,7 +386,7 @@ def run_tests():
             # send_throughput_resp({}, [err.strip()])
             # return
 
-    throughputs, runtime_errors = compile_results(tests_to_run)
+    throughputs, runtime_errors = compile_results(list_system)
     print("throughputs", throughputs)
     print(runtime_errors, "runtime errors")
     send_throughput_resp(throughputs, runtime_errors + errors)
