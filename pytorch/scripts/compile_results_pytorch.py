@@ -255,10 +255,10 @@ def send_throughput_resp(throughputs, errors):
         return
 
     if os.environ["ENV"] == "prod":
-        url = f"https://api.runpod.io/graphql?api_key={api_key}&&pod_id={os.environ['POD_ID']}"
+        url = f"https://api.runpod.io/graphql?api_key={api_key}"
     else:
         # TODO: update this before merging
-        url = f"https://pierre-bastola-api.runpod.dev/graphql?api_key={api_key}&&pod_id={os.environ['POD_ID']}"
+        url = f"https://pierre-bastola-api.runpod.dev/graphql?api_key={api_key}"
 
     headers = {
         "Content-Type": "application/json",
@@ -266,6 +266,7 @@ def send_throughput_resp(throughputs, errors):
 
     input_fields = [
         f'machineId: "{ os.environ["MACHINE_ID"] }"',
+        f'podId: "{ os.environ["POD_ID"] }"'
     ]
     input_fields.append(f'benchmarkConfig: "{ os.environ["BENCHMARK_CONFIG"]}"')
     for test_name, test_result in throughputs.items():
