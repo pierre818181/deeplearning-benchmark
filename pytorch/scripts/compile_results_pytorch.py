@@ -268,7 +268,7 @@ def send_throughput_resp(throughputs, errors):
     for test_name, test_result in throughputs.items():
         input_fields.append(f'{test_name}: "{ test_result }"')
     parsed_errors = re.sub(r'[^a-zA-Z0-9 ]', '',  ", ".join(errors))
-    input_fields.append(f"errors: {parsed_errors}")
+    input_fields.append(f'errors: "{parsed_errors}"')
 
     input_fields_str = ", ".join(input_fields)
     mutation = f"""mutation RecordBenchmark{{
