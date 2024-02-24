@@ -318,29 +318,25 @@ def run_tests():
         return
     
     for ds in datasets:
-        cmd = ["./run_prepare.sh", ds]
-        process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        cmd = ["/workspace/run_prepare.sh", ds]
+        result = subprocess.run(
+            cmd, capture_output=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
-        while True:
-            output = process.stdout.readline()
-            if output == "" and process.poll() is not None:
-                print(output, f"completed downloading dataset: { ds }")
-                break
-            if output:
-                print(output.strip())
-
+        if result.returncode == 0:
+            print(f"Successfully downloaded dataset: {ds}")
+        else:
+            send_throughput_resp({}, [f"Failed to download dataset: {ds}"])
+            return
+    
     move_dataset_cmd = ["cp", "-r", "/data", "/workspace/data"]
-    process = subprocess.Popen(
-        move_dataset_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    result = subprocess.run(
+        move_dataset_cmd, capture_output=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
     )
-    while True:
-        output = process.stdout.readline()
-        if output == "" and process.poll() is not None:
-            print(output, f"completed moving dataset to the working directory")
-            break
-        if output:
-            print(output.strip())
+    if result.returncode == 0:
+        print(f"Successfully downloaded dataset: {ds}")
+    else:
+        send_throughput_resp({}, [f"Failed to copy dataset: {ds}"])
+        return
         
     if precision == "fp32":
         tests_to_run = fp_32_tests
