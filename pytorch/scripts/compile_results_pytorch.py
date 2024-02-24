@@ -234,6 +234,7 @@ def compile_results(list_test):
                         version,
                         path,
                     )
+                    print("description and errors", throughput, throughput_description, errors)
                     if errors:
                         for err in errors:
                             throughput_errors.append(err)
@@ -269,7 +270,7 @@ def send_throughput_resp(throughputs, errors):
     input_fields.append(f'benchmarkConfig: "{ os.environ["BENCHMARK_CONFIG"]}"')
     for test_name, test_result in throughputs.items():
         input_fields.append(f'{test_name}: "{ test_result }"')
-    parsed_errors = re.sub(r'[^a-zA-Z0-9 ]', '',  ", ".join(errors))
+    parsed_errors = re.sub(r'[^a-zA-Z0-9; ]', '',  ";;;; ".join(errors))
     input_fields.append(f'errors: "{parsed_errors}"')
 
     input_fields_str = ", ".join(input_fields)
@@ -344,16 +345,16 @@ def run_tests():
         send_throughput_resp({}, [f"Failed to copy dataset: {ds}"])
         return
 
-    list_system = None  
+    list_test = None  
     if precision == "fp32":
         tests_to_run = fp_32_tests
-        list_system = list_system_multiple
+        list_test = list_test_fp32
     elif precision == "fp16":
         tests_to_run = fp_16_tests
-        list_system = list_system_single
+        list_test = list_test_fp16
     else:
         tests_to_run = fp_32_tests + fp_16_tests
-        list_system = list_system_multiple
+        list_test = list_test_fp32
 
     errors = []
     for test in tests_to_run:
@@ -386,7 +387,7 @@ def run_tests():
             # send_throughput_resp({}, [err.strip()])
             # return
 
-    throughputs, runtime_errors = compile_results(list_system)
+    throughputs, runtime_errors = compile_results(list_test)
     print("throughputs", throughputs)
     print(runtime_errors, "runtime errors")
     send_throughput_resp(throughputs, runtime_errors + errors)
