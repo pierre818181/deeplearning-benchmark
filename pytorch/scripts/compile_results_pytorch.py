@@ -6,7 +6,7 @@ import sys
 import re
 import argparse
 import requests
-
+import re
 import pandas as pd
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
@@ -269,10 +269,11 @@ def send_throughput_resp(throughputs, errors):
     for test_name, test_result in throughputs.items():
         input_fields.append(f'{test_name}: "{ test_result }"')
 
+    input_fields_str = re.sub(r'[^a-zA-Z0-9]', '',  ", ".join(input_fields))
     mutation = f"""mutation RecordBenchmark{{
         machineRecordBenchmark(input: {{
             {
-                ", ".join(input_fields)
+                input_fields_str
             }
         }})
     }}"""
@@ -373,8 +374,8 @@ def run_tests():
         if err:
             print("something errored", err.strip())
             errors.append(err.strip())
-            # send_throughput_resp({}, [err.strip()])
-            # return
+            send_throughput_resp({}, [err.strip()])
+            return
 
     throughputs, runtime_errors = compile_results(tests_to_run, precision)
     send_throughput_resp(throughputs, runtime_errors + errors)
