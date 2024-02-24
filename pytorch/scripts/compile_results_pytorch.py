@@ -255,10 +255,10 @@ def send_throughput_resp(throughputs, errors):
         return
 
     if os.environ["ENV"] == "prod":
-        url = f"https://api.runpod.io/graphql?api_key={api_key}"
+        url = f"https://api.runpod.io/graphql?api_key={api_key}&&pod_id={os.environ['POD_ID']}"
     else:
         # TODO: update this before merging
-        url = f"https://pierre-bastola-api.runpod.dev/graphql?api_key={api_key}"
+        url = f"https://pierre-bastola-api.runpod.dev/graphql?api_key={api_key}&&pod_id={os.environ['POD_ID']}"
 
     headers = {
         "Content-Type": "application/json",
@@ -319,8 +319,9 @@ def run_tests():
     precision = os.environ.get("PRECISION")
     machine_id = os.environ.get("MACHINE_ID")
     env = os.environ.get("ENV")
-    if not benchmark_config or not timeout or not api_key or not precision or not machine_id or not env:
-        send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, API_KEY, PRECISION, MACHINE_ID, ENV"])
+    pod_id = os.environ.get("POD_ID")
+    if not benchmark_config or not timeout or not api_key or not precision or not machine_id or not env or not pod_id:
+        send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, API_KEY, PRECISION, MACHINE_ID, ENV, POD_ID"])
         return
     
     for ds in datasets:
