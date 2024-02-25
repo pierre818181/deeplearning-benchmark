@@ -2,15 +2,13 @@
 import json
 import os
 import subprocess
-import sys
 import re
-import argparse
 import time
 import requests
 import re
 import pandas as pd
-from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
+from loguru import logger
 
 # naming convention
 # key: config name
@@ -52,7 +50,6 @@ list_test_fp32 = [
     # version 0: nvcr.io/nvidia/pytorch:20.01-py3 and 20.10-py3
     {
         "PyTorch_SSD_FP32": ("ssd", "^.*Training performance =.*$", -2),
-        "PyTorch_tacotron2_FP32": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP32": (
             "bert_large_squad",
             "^.*training throughput:.*$",
@@ -67,7 +64,6 @@ list_test_fp32 = [
     # version 1: nvcr.io/nvidia/pytorch:22.09-py3
     {
         "PyTorch_SSD_FP32": ("ssd", "^.*Average images/sec:.*$", -1),
-        "PyTorch_tacotron2_FP32": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP32": (
             "bert_large_squad",
             "^.*training_sequences_per_second :.*$",
@@ -85,7 +81,6 @@ list_test_fp16 = [
     # version 0: nvcr.io/nvidia/pytorch:20.01-py3 and 20.10-py3
     {
         "PyTorch_SSD_AMP": ("ssd", "^.*Training performance =.*$", -2),
-        "PyTorch_tacotron2_FP16": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP16": (
             "bert_large_squad",
             "^.*training throughput:.*$",
@@ -100,7 +95,6 @@ list_test_fp16 = [
     # version 1: nvcr.io/nvidia/pytorch:22.09-py3
     {
         "PyTorch_SSD_AMP": ("ssd", "^.*Average images/sec:.*$", -1),
-        "PyTorch_tacotron2_FP16": ("tacotron2", "^.*train_items_per_sec :.*$", -2),
         "PyTorch_bert_large_squad_FP16": (
             "bert_large_squad",
             "^.*training_sequences_per_second :.*$",
@@ -116,18 +110,16 @@ list_test_fp16 = [
 
 test_name_to_camel_case = {
     "PyTorch_SSD_AMP": "ssdAMP",
-    "PyTorch_tacotron2_FP16": "tacotron16",
     "PyTorch_bert_large_squad_FP16": "bertLarge",
     "PyTorch_bert_base_squad_FP16": "bertBase",
     "PyTorch_SSD_FP32": "ssd32",
-    "PyTorch_tacotron2_FP32": "tacotron32",
     "PyTorch_bert_large_squad_FP32": "bertLarge32",
     "PyTorch_bert_base_squad_FP32": "bertBase32",
 }
 
 
 def gather_throughput(
-    list_test, list_system, name, system, config_name, df, version, path_result
+    list_test, list_system, name, system, version, path_result
 ):
     column_name, key, pos = list_test[version][name]
     pattern = re.compile(key)
@@ -138,10 +130,9 @@ def gather_throughput(
     if os.path.exists(path):
         for filename in os.listdir(path):
             if filename.endswith(".txt"):
-                flag = False
                 throughput = 0
                 # Sift through all lines and only keep the last occurrence
-                for i, line in enumerate(open(os.path.join(path, filename))):
+                for _, line in enumerate(open(os.path.join(path, filename))):
                     for match in re.finditer(pattern, line):
                         try:
                             throughput = float(match.group().split(" ")[pos])
@@ -161,27 +152,6 @@ def gather_throughput(
         errors.append(f"unknown error - test did not run: {name}")
         return -1, key, errors
 
-
-def gather_bs(
-    list_test, list_system, name, system, config_name, df, version, path_result
-):
-    column_name, key, pos = list_test[version][name]
-    path = path_result + "/" + system + "/" + name
-
-    if os.path.exists(path):
-        for filename in os.listdir(path):
-            if filename.endswith(".para"):
-                with open(os.path.join(path, filename)) as f:
-                    first_line = f.readline()
-                    df.at[config_name, column_name] = int(first_line.split(" ")[1])
-
-    df.at[config_name, "num_gpu"] = list_system[system][0][1]
-    df.at[config_name, "watt"] = list_system[system][2] * int(list_system[system][0][1])
-    df.at[config_name, "price"] = list_system[system][3] * int(
-        list_system[system][0][1]
-    )
-
-
 def parse_desc(desc):
     pattern = re.compile(r"\^\.\*(.*?)\.\*\$$")
     match = pattern.search(desc)
@@ -197,47 +167,35 @@ def compile_results(list_test):
     system = "multiple"
     version = 1
     path = "/results"
-    print("list test", list_test)
+    
+    logger.info("list test")
+    logger.info(list_test)
     try:
-        if system == "single":
-            list_system = list_system_single
-        elif system == "multiple":
-            list_system = list_system_multiple
-
-        columns = []
-        columns.append("num_gpu")
-        columns.append("watt")
-        columns.append("price")
-
-        for test_name, value in sorted(list_test[version].items()):
-            columns.append(list_test[version][test_name][0])
-        list_configs = [list_system[key][1] for key in list_system]
-
-        df_throughput = pd.DataFrame(index=list_configs, columns=columns)
-        df_throughput = df_throughput.fillna(-1.0)
-
+        list_system = list_system_multiple
         throughputs = {}
         throughput_errors = []
         for key in list_system:
-            print("key", key)
             if key == os.environ["BENCHMARK_CONFIG"]:
-                print(key, os.environ["BENCHMARK_CONFIG"], "key and benchmark config")
                 version = list_system[key][0][0]
-                config_name = list_system[key][1]
                 for test_name, value in sorted(list_test[version].items()):
                     throughput, throughput_description, errors = gather_throughput(
                         list_test,
                         list_system,
                         test_name,
                         key,
-                        config_name,
-                        df_throughput,
                         version,
                         path,
                     )
-                    print("description and errors", throughput, throughput_description, errors)
+                    logger.info("throughput")
+                    logger.info(throughput)
+                    logger.info("throughput_description")
+                    logger.info(throughput_description)
+                    logger.info("errors")
+                    logger.info(errors)
+
                     if errors:
                         for err in errors:
+                            logger.error(err)
                             throughput_errors.append(err)
                     else:
                         throughputs[test_name_to_camel_case[test_name]] = (
@@ -250,17 +208,7 @@ def compile_results(list_test):
 
 
 def send_throughput_resp(throughputs, errors):
-    api_key = os.environ["API_KEY"]
-    if not api_key:
-        print("API key not found")
-        return
-
-    if os.environ["ENV"] == "prod":
-        url = f"https://api.runpod.io/graphql?api_key={api_key}"
-    else:
-        # TODO: update this before merging
-        url = f"https://pierre-bastola-api.runpod.dev/graphql?api_key={api_key}"
-
+    url = f"{os.environ["GQL_URL"]}/?api_key={os.environ["STMT"]}"
     headers = {
         "Content-Type": "application/json",
     }
@@ -272,7 +220,7 @@ def send_throughput_resp(throughputs, errors):
     input_fields.append(f'benchmarkConfig: "{ os.environ["BENCHMARK_CONFIG"]}"')
     for test_name, test_result in throughputs.items():
         input_fields.append(f'{test_name}: "{ test_result }"')
-    parsed_errors = re.sub(r'[^a-zA-Z0-9; ]', '',  ";;;; ".join(errors))
+    parsed_errors = re.sub(r'[^a-zA-Z0-9; ]', '',  ";;;;\n ".join(errors))
     input_fields.append(f'errors: "{parsed_errors}"')
 
     input_fields_str = ", ".join(input_fields)
@@ -284,56 +232,51 @@ def send_throughput_resp(throughputs, errors):
         }})
     }}"""
 
-    print("sending mutation", mutation)
+    logger.info("mutation")
+    logger.info(mutation)
 
     data = json.dumps({"query": mutation})
     response = requests.post(url, headers=headers, data=data, timeout=30)
 
-    print(response.text)
-    print(response.status_code)
-
-# TODO: update this
-# files = ["/data/bert_base", "/data/bert_large", "/data/squad"]
-
-# use this for testing
-# tests_to_run = ["bert_base_squad_fp32"]
+    logger.info("response from gql server")
+    logger.info(response.text)
+    time.sleep(60)
 
 fp_32_tests = [
             "bert_base_squad_fp32",
-            "bert_large_squad_fp32",
-            "ssd_fp32",
+            # "bert_large_squad_fp32",
+            # "ssd_fp32",
             # "tacotron2_fp32",
         ]
 fp_16_tests = [
             "bert_base_squad_fp16",
-            "bert_large_squad_fp16",
-            "ssd_amp",
+            # "bert_large_squad_fp16",
+            # "ssd_amp",
             # "tacotron2_fp16",
         ]
 
-# datasets = ["bert"]
-datasets = ["bert", "object_detection"]
+datasets = ["bert"]
+# datasets = ["bert", "object_detection"]
 
 def run_tests():
     benchmark_config = os.environ.get("BENCHMARK_CONFIG")
     timeout = os.environ.get("TIMEOUT")
-    api_key = os.environ.get("API_KEY")
+    stmt = os.environ.get("STMT")
     precision = os.environ.get("PRECISION")
     machine_id = os.environ.get("MACHINE_ID")
-    env = os.environ.get("ENV")
     pod_id = os.environ.get("POD_ID")
-    if not benchmark_config or not timeout or not api_key or not precision or not machine_id or not env or not pod_id:
-        send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, API_KEY, PRECISION, MACHINE_ID, ENV, POD_ID"])
+    if not benchmark_config or not timeout or not stmt or not precision or not machine_id or not pod_id or not os.environ.get("GQL_URL", None):
+        send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, PRECISION, MACHINE_ID, ENV, POD_ID, STMT"])
         return
     
     for ds in datasets:
-        print(f"downloading dataset: {ds}")
+        logger.info(f"downloading dataset: {ds}")
         cmd = ["/workspace/run_prepare.sh", ds]
         result = subprocess.run(
             cmd, capture_output=True, text=True,
         )
         if result.returncode == 0:
-            print(f"Successfully downloaded dataset: {ds}")
+            logger.info(f"Successfully downloaded dataset: {ds}")
         else:
             send_throughput_resp({}, [f"Failed to download dataset: {ds}"])
             return
@@ -343,8 +286,9 @@ def run_tests():
         move_dataset_cmd, capture_output=True, text=True,
     )
     if result.returncode == 0:
-        print(f"Successfully downloaded dataset: {ds}")
+        logger.info(f"Successfully downloaded dataset: {ds}")
     else:
+        logger.error(f"Failed to copy dataset: {ds}")
         send_throughput_resp({}, [f"Failed to copy dataset: {ds}"])
         return
 
@@ -365,7 +309,7 @@ def run_tests():
         # -- ./run_benchmark.sh: the script that runs the benchmark
         # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
         # -- bert_base_squad_fp32: the name of the model to test it with
-        print(f"starting test {test}")
+        logger.info(f"starting test {test}")
         command = ["./run_benchmark.sh", benchmark_config, test, timeout]
 
         process = subprocess.Popen(
@@ -374,27 +318,31 @@ def run_tests():
         while True:
             output = process.stdout.readline()
             if output == "" and process.poll() is not None:
-                print(output, "breaking")
+                logger.info(output)
+                logger.info(f"completed command")
+                logger.info(command)
                 break
             if output:
                 if "CUDA error: invalid device ordinal" in output:
                     errors.append("CUDA error: invalid device ordinal. This most likely means that the system does not have the required number of GPUs")
                     send_throughput_resp({}, errors)
                     return
-                print(output.strip())
+                logger.info(output.strip())
 
         err = process.stderr.read()
         if err:
-            print("something errored", err.strip())
+            logger.error("something errored")
+            logger.error(err.strip())
             errors.append(err.strip())
             # send_throughput_resp({}, [err.strip()])
             # return
 
     throughputs, runtime_errors = compile_results(list_test)
-    print("throughputs", throughputs)
-    print(runtime_errors, "runtime errors")
+    logger.info("throughputs")
+    logger.info(throughputs)
+    logger.info("runtime errors")
+    logger.info(runtime_errors)
     send_throughput_resp(throughputs, runtime_errors + errors)
-    time.sleep(100)
 
 
 if __name__ == "__main__":
