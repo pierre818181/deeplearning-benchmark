@@ -208,7 +208,7 @@ def compile_results(list_test):
 
 
 def send_throughput_resp(throughputs, errors):
-    url = f'{os.environ["GQL_URL"]}/?api_key={os.environ["STMT"]}'
+    url = f'{os.environ["GQL_URL"]}?api_key={os.environ["STMT"]}'
     logger.info(url)
     headers = {
         "Content-Type": "application/json",
@@ -247,13 +247,11 @@ fp_32_tests = [
             "bert_base_squad_fp32",
             # "bert_large_squad_fp32",
             # "ssd_fp32",
-            # "tacotron2_fp32",
         ]
 fp_16_tests = [
             "bert_base_squad_fp16",
             # "bert_large_squad_fp16",
             # "ssd_amp",
-            # "tacotron2_fp16",
         ]
 
 datasets = ["bert"]
