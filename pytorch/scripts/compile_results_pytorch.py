@@ -209,6 +209,7 @@ def compile_results(list_test):
 
 def send_throughput_resp(throughputs, errors):
     url = f'{os.environ["GQL_URL"]}/?api_key={os.environ["STMT"]}'
+    logger.info(url)
     headers = {
         "Content-Type": "application/json",
     }
@@ -267,7 +268,7 @@ def run_tests():
         machine_id = os.environ.get("MACHINE_ID")
         pod_id = os.environ.get("POD_ID")
         if not benchmark_config or not timeout or not stmt or not precision or not machine_id or not pod_id or not os.environ.get("GQL_URL", None):
-            send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, PRECISION, MACHINE_ID, ENV, POD_ID, STMT"])
+            send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, PRECISION, MACHINE_ID, ENV, POD_ID, STMT, GQL_URL"])
             return
         
         for ds in datasets:
