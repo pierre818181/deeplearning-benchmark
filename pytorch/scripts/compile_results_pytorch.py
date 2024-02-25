@@ -254,8 +254,8 @@ fp_16_tests = [
             "ssd_amp",
         ]
 
-datasets = ["bert"]
-# datasets = ["bert", "object_detection"]
+# datasets = ["bert"]
+datasets = ["bert", "object_detection"]
 
 def run_tests():
     try:
