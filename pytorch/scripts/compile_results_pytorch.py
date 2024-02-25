@@ -245,13 +245,13 @@ def send_throughput_resp(throughputs, errors):
 
 fp_32_tests = [
             "bert_base_squad_fp32",
-            # "bert_large_squad_fp32",
-            # "ssd_fp32",
+            "bert_large_squad_fp32",
+            "ssd_fp32",
         ]
 fp_16_tests = [
             "bert_base_squad_fp16",
-            # "bert_large_squad_fp16",
-            # "ssd_amp",
+            "bert_large_squad_fp16",
+            "ssd_amp",
         ]
 
 datasets = ["bert"]
