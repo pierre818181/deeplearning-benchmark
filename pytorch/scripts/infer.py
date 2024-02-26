@@ -2,7 +2,7 @@ import os
 import subprocess
 from loguru import logger
 
-os.environ["MODEL_NAME"] = "tiiuae/falcon-7b"
+os.environ["INFERENCE_MODEL_NAME"] = "tiiuae/falcon-7b"
 
 def setup_for_inference():
     commands = [
@@ -31,7 +31,7 @@ def run_inference():
     from prompts import list_of_questions
 
     try:
-        model = os.environ.get("MODEL_NAME", "tiiuae/falcon-7b")
+        model = os.environ.get("INFERENCE_MODEL_NAME", "tiiuae/falcon-7b")
 
         tokenizer = AutoTokenizer.from_pretrained(model)
         pipeline = transformers.pipeline(

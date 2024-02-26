@@ -277,81 +277,86 @@ def run_tests():
             send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, PRECISION, MACHINE_ID, ENV, POD_ID, STMT, GQL_URL"])
             return
 
-        for ds in datasets:
-            logger.info(f"downloading dataset: {ds}")
-            cmd = ["/workspace/run_prepare.sh", ds]
+        if os.environ.get("INFERENCE_ONLY", "false") == "true":
+            for ds in datasets:
+                logger.info(f"downloading dataset: {ds}")
+                cmd = ["/workspace/run_prepare.sh", ds]
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True,
+                )
+                if result.returncode == 0:
+                    logger.info(f"Successfully downloaded dataset: {ds}")
+                else:
+                    send_throughput_resp({}, [f"Failed to download dataset: {ds}"])
+                    return
+            
+            move_dataset_cmd = ["cp", "-r", "/data", "/workspace/data"]
             result = subprocess.run(
-                cmd, capture_output=True, text=True,
+                move_dataset_cmd, capture_output=True, text=True,
             )
             if result.returncode == 0:
                 logger.info(f"Successfully downloaded dataset: {ds}")
             else:
-                send_throughput_resp({}, [f"Failed to download dataset: {ds}"])
+                logger.error(f"Failed to copy dataset: {ds}")
+                send_throughput_resp({}, [f"Failed to copy dataset: {ds}"])
                 return
-        
-        move_dataset_cmd = ["cp", "-r", "/data", "/workspace/data"]
-        result = subprocess.run(
-            move_dataset_cmd, capture_output=True, text=True,
-        )
-        if result.returncode == 0:
-            logger.info(f"Successfully downloaded dataset: {ds}")
-        else:
-            logger.error(f"Failed to copy dataset: {ds}")
-            send_throughput_resp({}, [f"Failed to copy dataset: {ds}"])
-            return
 
-        list_test = None  
-        if precision == "fp32":
-            tests_to_run = fp_32_tests
-            list_test = list_test_fp32
-        elif precision == "fp16":
-            tests_to_run = fp_16_tests
-            list_test = list_test_fp16
-        else:
-            tests_to_run = fp_32_tests + fp_16_tests
-            list_test = list_test_fp32
+            list_test = None  
+            if precision == "fp32":
+                tests_to_run = fp_32_tests
+                list_test = list_test_fp32
+            elif precision == "fp16":
+                tests_to_run = fp_16_tests
+                list_test = list_test_fp16
+            else:
+                tests_to_run = fp_32_tests + fp_16_tests
+                list_test = list_test_fp32
 
-        errors = []
-        for test in tests_to_run:
-            # TODO: fetch this from the env var. Format for this command:
-            # -- ./run_benchmark.sh: the script that runs the benchmark
-            # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
-            # -- bert_base_squad_fp32: the name of the model to test it with
-            logger.info(f"starting test {test}")
-            command = ["./run_benchmark.sh", benchmark_config, test, timeout]
+            errors = []
+            for test in tests_to_run:
+                # TODO: fetch this from the env var. Format for this command:
+                # -- ./run_benchmark.sh: the script that runs the benchmark
+                # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
+                # -- bert_base_squad_fp32: the name of the model to test it with
+                logger.info(f"starting test {test}")
+                command = ["./run_benchmark.sh", benchmark_config, test, timeout]
 
-            process = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-            )
-            while True:
-                output = process.stdout.readline()
-                if output == "" and process.poll() is not None:
-                    logger.info(output)
-                    logger.info(f"completed command")
-                    logger.info(command)
-                    break
-                if output:
-                    if "CUDA error: invalid device ordinal" in output:
-                        errors.append("CUDA error: invalid device ordinal. This most likely means that the system does not have the required number of GPUs")
-                        send_throughput_resp({}, errors)
-                        return
-                    logger.info(output.strip())
+                process = subprocess.Popen(
+                    command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                )
+                while True:
+                    output = process.stdout.readline()
+                    if output == "" and process.poll() is not None:
+                        logger.info(output)
+                        logger.info(f"completed command")
+                        logger.info(command)
+                        break
+                    if output:
+                        if "CUDA error: invalid device ordinal" in output:
+                            errors.append("CUDA error: invalid device ordinal. This most likely means that the system does not have the required number of GPUs")
+                            send_throughput_resp({}, errors)
+                            return
+                        logger.info(output.strip())
 
-            err = process.stderr.read()
-            if err:
-                logger.error("something errored")
-                logger.error(err.strip())
-                errors.append(err.strip())
-                # send_throughput_resp({}, [err.strip()])
-                # return
+                err = process.stderr.read()
+                if err:
+                    logger.error("something errored")
+                    logger.error(err.strip())
+                    errors.append(err.strip())
+                    # send_throughput_resp({}, [err.strip()])
+                    # return
 
-        throughputs, runtime_errors = compile_results(list_test)
-        logger.info("throughputs")
-        logger.info(throughputs)
-        logger.info("runtime errors")
-        logger.info(runtime_errors)
+            throughputs, runtime_errors = compile_results(list_test)
+            logger.info("throughputs")
+            logger.info(throughputs)
+            logger.info("runtime errors")
+            logger.info(runtime_errors)
         
         if os.environ.get("MODEL_TYPE", "heavy") == "heavy":
+            if os.environ.get("INFERENCE_ONLY", "false") == "true":
+                throughputs = {}
+                runtime_errors = []
+                errors = []
             err = setup_for_inference()
             logger.info("error from setup")
             logger.info(err)
@@ -359,7 +364,7 @@ def run_tests():
                 runtime_errors.append(err)
             else:
                 total_time, err = run_inference()
-                throughputs["falconInferenceTime"] = total_time
+                throughputs["falconInferenceTime"] = int(total_time)
                 logger.info(total_time)
                 logger.info(err)
 
