@@ -244,7 +244,7 @@ def send_throughput_resp(throughputs, errors):
     logger.info(response.text)
     time.sleep(60)
 
-if os.environ.get("MODEL_TYPE", "heavy") == "lite":
+if os.environ.get("TEST_TYPE", "heavy") == "lite":
     fp_32_tests = [
             "bert_base_squad_fp32",
         ]
@@ -276,8 +276,13 @@ def run_tests():
         if not benchmark_config or not timeout or not stmt or not precision or not machine_id or not pod_id or not os.environ.get("GQL_URL", None):
             send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, PRECISION, MACHINE_ID, ENV, POD_ID, STMT, GQL_URL"])
             return
+        
+        errors = []
+        throughputs = {}
+        runtime_errors = []
 
-        if os.environ.get("INFERENCE_ONLY", "false") == "true":
+        run_training = os.environ.get("TEST_TYPE", "heavy") != "inference"
+        if run_training:
             for ds in datasets:
                 logger.info(f"downloading dataset: {ds}")
                 cmd = ["/workspace/run_prepare.sh", ds]
@@ -312,7 +317,6 @@ def run_tests():
                 tests_to_run = fp_32_tests + fp_16_tests
                 list_test = list_test_fp32
 
-            errors = []
             for test in tests_to_run:
                 # TODO: fetch this from the env var. Format for this command:
                 # -- ./run_benchmark.sh: the script that runs the benchmark
@@ -352,11 +356,8 @@ def run_tests():
             logger.info("runtime errors")
             logger.info(runtime_errors)
         
-        if os.environ.get("MODEL_TYPE", "heavy") == "heavy":
-            if os.environ.get("INFERENCE_ONLY", "false") == "true":
-                throughputs = {}
-                runtime_errors = []
-                errors = []
+        run_inference = os.environ.get("TEST_TYPE", "heavy") == "inference" or os.environ.get("TEST_TYPE", "heavy") == "heavy"
+        if run_inference:
             err = setup_for_inference()
             logger.info("error from setup")
             logger.info(err)
