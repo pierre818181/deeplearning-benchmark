@@ -1,5 +1,6 @@
 import os
 import subprocess
+from loguru import logger
 
 os.environ["MODEL_NAME"] = "tiiuae/falcon-7b"
 
@@ -8,12 +9,13 @@ def setup_for_inference():
         "pip install --upgrade pip",
         "pip install --upgrade torch",
         "pip install --upgrade accelerate transformers",
-        "pip uninstall transformer-engine",
+        "pip uninstall transformer-engine -y",
     ]
     try:
         for cmd in commands:
             res = subprocess.run(cmd, check=True, shell=True, capture_output=True)
             if res.returncode != 0:
+                logger.error(f"Error: {res.stderr.decode('utf-8')}")
                 return res.stderr.decode("utf-8")
         return None
     except subprocess.CalledProcessError as e:
