@@ -348,7 +348,7 @@ def run_tests():
         logger.info("error from setup")
         logger.info(err)
 
-        if err != None:
+        if err == None:
             total_time, err = run_inference()
             logger.info(total_time)
             logger.info(err)
