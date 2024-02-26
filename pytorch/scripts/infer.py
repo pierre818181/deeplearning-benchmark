@@ -8,7 +8,7 @@ def setup_for_inference():
         "pip install --upgrade pip",
         "pip install --upgrade torch",
         "pip install --upgrade accelerate transformers",
-        "pip uninstall transformers-engine",
+        "pip uninstall transformer-engine",
     ]
     try:
         for cmd in commands:
