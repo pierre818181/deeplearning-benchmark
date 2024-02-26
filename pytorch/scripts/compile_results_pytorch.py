@@ -244,28 +244,35 @@ def send_throughput_resp(throughputs, errors):
     logger.info(response.text)
     time.sleep(60)
 
-fp_32_tests = [
+if os.environ.get("MODEL_TYPE", "heavy") == "lite":
+    fp_32_tests = [
             "bert_base_squad_fp32",
-            "bert_large_squad_fp32",
-            "ssd_fp32",
         ]
-fp_16_tests = [
-            "bert_base_squad_fp16",
-            "bert_large_squad_fp16",
-            "ssd_amp",
-        ]
-
-# datasets = ["bert"]
-datasets = ["bert", "object_detection"]
+    fp_16_tests = [
+                "bert_base_squad_fp16",
+            ]
+    datasets = ["bert"]
+else:
+    fp_32_tests = [
+                "bert_base_squad_fp32",
+                "bert_large_squad_fp32",
+                "ssd_fp32",
+            ]
+    fp_16_tests = [
+                "bert_base_squad_fp16",
+                "bert_large_squad_fp16",
+                "ssd_amp",
+            ]
+    datasets = ["bert", "object_detection"]
 
 def run_tests():
     try:
-        benchmark_config = os.environ.get("BENCHMARK_CONFIG")
-        timeout = os.environ.get("TIMEOUT")
-        stmt = os.environ.get("STMT")
-        precision = os.environ.get("PRECISION")
-        machine_id = os.environ.get("MACHINE_ID")
-        pod_id = os.environ.get("POD_ID")
+        benchmark_config = os.environ.get("BENCHMARK_CONFIG", None)
+        timeout = os.environ.get("TIMEOUT", None)
+        stmt = os.environ.get("STMT", None)
+        precision = os.environ.get("PRECISION", None)
+        machine_id = os.environ.get("MACHINE_ID", None)
+        pod_id = os.environ.get("POD_ID", None)
         if not benchmark_config or not timeout or not stmt or not precision or not machine_id or not pod_id or not os.environ.get("GQL_URL", None):
             send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, PRECISION, MACHINE_ID, ENV, POD_ID, STMT, GQL_URL"])
             return
@@ -344,16 +351,17 @@ def run_tests():
         logger.info("runtime errors")
         logger.info(runtime_errors)
         
-        err = setup_for_inference()
-        logger.info("error from setup")
-        logger.info(err)
-        if err != None:
-            runtime_errors.append(err)
-        else:
-            total_time, err = run_inference()
-            throughputs["falconInferenceTime"] = total_time
-            logger.info(total_time)
+        if os.environ.get("MODEL_TYPE", "heavy") == "heavy":
+            err = setup_for_inference()
+            logger.info("error from setup")
             logger.info(err)
+            if err != None:
+                runtime_errors.append(err)
+            else:
+                total_time, err = run_inference()
+                throughputs["falconInferenceTime"] = total_time
+                logger.info(total_time)
+                logger.info(err)
 
         send_throughput_resp(throughputs, runtime_errors + errors)
     except Exception as e:
