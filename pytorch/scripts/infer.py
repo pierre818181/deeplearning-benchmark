@@ -6,8 +6,8 @@ os.environ["MODEL_NAME"] = "tiiuae/falcon-7b"
 def setup_for_inference():
     commands = [
         "pip install --upgrade pip",
-        "pip install torch",
-        "pip install accelerate transformers",
+        "pip install --upgrade torch",
+        "pip install --upgrade accelerate transformers",
         "pip uninstall transformers-engine",
     ]
     try:
