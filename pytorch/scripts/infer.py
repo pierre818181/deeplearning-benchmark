@@ -30,6 +30,9 @@ def run_inference():
     import pandas as pd
     from prompts import list_of_questions
 
+    if os.environ.get("INFERENCE_PROMPTS_SIZE", None) is not None:
+        number_of_prompts = int(os.environ.get("INFERENCE_PROMPTS_SIZE"))
+        list_of_questions = list_of_questions[:number_of_prompts]
     try:
         model = os.environ.get("INFERENCE_MODEL_NAME", "tiiuae/falcon-7b")
 
