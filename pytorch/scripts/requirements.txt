@@ -20,3 +20,4 @@ typing_extensions==4.4.0
 tzdata==2024.1
 urllib3==1.26.11
 yarl==1.9.4
+accelerate==0.27.2
