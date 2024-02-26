@@ -13,6 +13,7 @@ def setup_for_inference():
     ]
     try:
         for cmd in commands:
+            logger.info(f"Running command: {cmd}")
             res = subprocess.run(cmd, check=True, shell=True, capture_output=True)
             if res.returncode != 0:
                 logger.error(f"Error: {res.stderr.decode('utf-8')}")
