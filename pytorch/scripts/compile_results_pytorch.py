@@ -203,7 +203,7 @@ def compile_results(list_test):
         throughputs = {}
         throughput_errors = []
         for key in list_system:
-            if key == os.environ["FINETUNING_CONFIG"]:
+            if key == os.environ["CONFIG"]:
                 version = list_system[key][0][0]
                 for test_name, value in sorted(list_test[version].items()):
                     throughput, throughput_description, errors = gather_throughput(
@@ -251,7 +251,7 @@ if os.environ.get("TEST_TYPE", "heavy") == "lite":
 elif os.environ.get("TEST_TYPE", "heavy") == "inference_only":
     fp_32_tests, fp_16_tests, datasets = [], [], []
 else:
-    fp_32_tests, fp_16_tests, datasets = fp_32_tests = [
+    fp_32_tests, fp_16_tests, datasets = [
                 "bert_base_squad_fp32",
                 "bert_large_squad_fp32",
                 "ssd_fp32",
