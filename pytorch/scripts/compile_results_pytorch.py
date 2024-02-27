@@ -9,7 +9,35 @@ import re
 import pandas as pd
 from gql.transport.requests import RequestsHTTPTransport
 from loguru import logger
-from infer import setup_for_inference, run_inference
+from infer import install_packages_for_inference, run_inference
+import boto3
+
+gpu_type_to_inference_model = {
+    '16GB': 'tiiuae/falcon-7b',
+    '2x16GB': 'tiiuae/falcon-7b',
+    '4x16GB': 'tiiuae/falcon-7b',
+    '8x16GB': 'tiiuae/falcon-7b',
+
+    '24GB': 'tiiuae/falcon-7b',
+    '2x24GB': 'tiiuae/falcon-7b',
+    '4x24GB': 'tiiuae/falcon-40b',
+    '8x24GB': 'tiiuae/falcon-40b',
+
+    '40GB': 'tiiuae/falcon-7b',
+    '2x40GB': 'tiiuae/falcon-40b',
+    '4x40GB': 'tiiuae/falcon-40b',
+    '8x40GB': 'tiiuae/falcon-40b',
+
+    '48GB': 'tiiuae/falcon-7b',
+    '2x48GB': 'tiiuae/falcon-40b',
+    '4x48GB': 'tiiuae/falcon-180B',
+    '8x48GB': 'tiiuae/falcon-180B',
+
+    '80GB': 'tiiuae/falcon-40b',
+    '2x80GB': 'tiiuae/falcon-40b',
+    '4x80GB': 'tiiuae/falcon-180B',
+    '8x80GB': 'tiiuae/falcon-180B',
+}
 
 # naming convention
 # key: config name
@@ -19,7 +47,6 @@ from infer import setup_for_inference, run_inference
 # rename: renaming the system so it is easier to read
 # watt per gpu
 # price per gpu
-
 list_system_single = {
     "8x24GB": ([1, 8], "Runpod 8x 24GB", 100, 100),
 }
@@ -176,7 +203,7 @@ def compile_results(list_test):
         throughputs = {}
         throughput_errors = []
         for key in list_system:
-            if key == os.environ["BENCHMARK_CONFIG"]:
+            if key == os.environ["FINETUNING_CONFIG"]:
                 version = list_system[key][0][0]
                 for test_name, value in sorted(list_test[version].items()):
                     throughput, throughput_description, errors = gather_throughput(
@@ -208,80 +235,73 @@ def compile_results(list_test):
         return {}, [str(e)]
 
 
-def send_throughput_resp(throughputs, errors):
-    url = f'{os.environ["GQL_URL"]}?api_key={os.environ["STMT"]}'
-    logger.info(url)
-    headers = {
-        "Content-Type": "application/json",
-    }
+def send_throughputs(client, topic_arn, message):
+    message["podId"] = os.environ.get("POD_ID", "missing_pod_id")
+    response = client.publish(
+        TopicArn=topic_arn,
+        Message=json.dumps(message)
+    )
 
-    input_fields = [
-        f'machineId: "{ os.environ["MACHINE_ID"] }"',
-        f'podId: "{ os.environ["POD_ID"] }"'
-    ]
-    input_fields.append(f'benchmarkConfig: "{ os.environ["BENCHMARK_CONFIG"]}"')
-    for test_name, test_result in throughputs.items():
-        input_fields.append(f'{test_name}: "{ test_result }"')
-    parsed_errors = re.sub(r'[^a-zA-Z0-9; ]', '',  ";;;;\n ".join(errors))
-    input_fields.append(f'errors: "{parsed_errors}"')
-
-    input_fields_str = ", ".join(input_fields)
-    mutation = f"""mutation RecordBenchmark{{
-        machineRecordBenchmark(input: {{
-            {
-                input_fields_str
-            }
-        }})
-    }}"""
-
-    logger.info("mutation")
-    logger.info(mutation)
-
-    data = json.dumps({"query": mutation})
-    response = requests.post(url, headers=headers, data=data, timeout=30)
-
-    logger.info("response from gql server")
-    logger.info(response.text)
-    time.sleep(60)
+    logger.info(f"response from sns: {response}")
+    # sleeping so that the lambda gets time to kill the pod.
+    time.sleep(50)
 
 if os.environ.get("TEST_TYPE", "heavy") == "lite":
-    fp_32_tests = [
-            "bert_base_squad_fp32",
-        ]
-    fp_16_tests = [
-                "bert_base_squad_fp16",
-            ]
-    datasets = ["bert"]
+    fp_32_tests, fp_16_tests, datasets = ["bert_base_squad_fp32"], ["bert_base_squad_fp16"], ["bert"]
+elif os.environ.get("TEST_TYPE", "heavy") == "inference_only":
+    fp_32_tests, fp_16_tests, datasets = [], [], []
 else:
-    fp_32_tests = [
+    fp_32_tests, fp_16_tests, datasets = fp_32_tests = [
                 "bert_base_squad_fp32",
                 "bert_large_squad_fp32",
                 "ssd_fp32",
-            ]
-    fp_16_tests = [
+            ], [
                 "bert_base_squad_fp16",
                 "bert_large_squad_fp16",
                 "ssd_amp",
+            ], [
+                "bert", 
+                "object_detection"
             ]
-    datasets = ["bert", "object_detection"]
+
+def initialize_aws_client(access_key, secret_key, region):
+    return boto3.client(
+        'sns',
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name=region
+    )
 
 def run_tests():
     try:
-        benchmark_config = os.environ.get("BENCHMARK_CONFIG", None)
+        config = os.environ.get("CONFIG", None)
         timeout = os.environ.get("TIMEOUT", None)
-        stmt = os.environ.get("STMT", None)
         precision = os.environ.get("PRECISION", None)
-        machine_id = os.environ.get("MACHINE_ID", None)
         pod_id = os.environ.get("POD_ID", None)
-        if not benchmark_config or not timeout or not stmt or not precision or not machine_id or not pod_id or not os.environ.get("GQL_URL", None):
-            send_throughput_resp({}, ["One of the environment variables are missing: BENCHMARK_CONFIG, TIMEOUT, PRECISION, MACHINE_ID, ENV, POD_ID, STMT, GQL_URL"])
+        test_type = os.environ.get("TEST_TYPE", "heavy")
+        aws_key_id =  os.environ.get("MACHINE_BENCHMARK_AWS_ACCESS_KEY_ID", None)
+        aws_secret_access_key  = os.environ.get("MACHINE_BENCHMARK_AWS_SECRET_ACCESS_KEY", None)
+        aws_topic_arn = os.environ.get("MACHINE_BENCHMARK_TOPIC_ARN", None)
+        if not config or not precision or not pod_id or not aws_key_id or not aws_secret_access_key or not aws_topic_arn:
+            if not aws_key_id or not aws_secret_access_key or not aws_topic_arn or not pod_id:
+                logger.error("""One of the critical environment variables is missing: MACHINE_BENCHMARK_AWS_ACCESS_KEY_ID, 
+                                MACHINE_BENCHMARK_AWS_SECRET_ACCESS_KEY, MACHINE_BENCHMARK_TOPIC_ARN. 
+                                Cannot send request to terminate the pod.""")
+            else:
+                client = initialize_aws_client(aws_key_id, aws_secret_access_key, "us-east-1")
+                send_throughputs(client, aws_topic_arn, {"errors": ["""One of the environment variables is missing: FINETUNING_CONFIG, INFERENCE_CONFIG, 
+                                        TIMEOUT, PRECISION, POD_ID, TEST_TYPE, INFERENCE_PROMPTS_SIZE, MACHINE_BENCHMARK_AWS_ACCESS_KEY_ID, 
+                                        MACHINE_BENCHMARK_AWS_SECRET_ACCESS_KEY, MACHINE_BENCHMARK_TOPIC_ARN"""],
+                                    })
             return
-        
-        errors = []
+        logger.info(f"CONFIG: {config}, TIMEOUT: {timeout}, PRECISION: {precision}, POD_ID: {pod_id}, TEST_TYPE: {test_type}, AWS_ACCESS_KEY_ID: {aws_key_id}, AWS_SECRET_ACCESS_KEY: {aws_secret_access_key}, AWS_TOPIC_ARN: {aws_topic_arn}")
+
+        client = initialize_aws_client(aws_key_id, aws_secret_access_key, "us-east-1")
         throughputs = {}
         runtime_errors = []
+        errors = []
 
-        run_training = os.environ.get("TEST_TYPE", "heavy") != "inference"
+        run_training = test_type != "inference_only"
         if run_training:
             for ds in datasets:
                 logger.info(f"downloading dataset: {ds}")
@@ -292,7 +312,7 @@ def run_tests():
                 if result.returncode == 0:
                     logger.info(f"Successfully downloaded dataset: {ds}")
                 else:
-                    send_throughput_resp({}, [f"Failed to download dataset: {ds}"])
+                    send_throughputs(client, aws_topic_arn, {"errors": [f"Failed to download dataset: {ds}"]})
                     return
             
             move_dataset_cmd = ["cp", "-r", "/data", "/workspace/data"]
@@ -303,7 +323,7 @@ def run_tests():
                 logger.info(f"Successfully downloaded dataset: {ds}")
             else:
                 logger.error(f"Failed to copy dataset: {ds}")
-                send_throughput_resp({}, [f"Failed to copy dataset: {ds}"])
+                send_throughputs(client, aws_topic_arn, {"errors": [f"Failed to copy dataset: {ds}"]})
                 return
 
             list_test = None  
@@ -323,7 +343,7 @@ def run_tests():
                 # -- 8x24GB: the system configuration to be tested. This is in the format gpu_count x VRAM size
                 # -- bert_base_squad_fp32: the name of the model to test it with
                 logger.info(f"starting test {test}")
-                command = ["./run_benchmark.sh", benchmark_config, test, timeout]
+                command = ["./run_benchmark.sh", config, test, timeout]
 
                 process = subprocess.Popen(
                     command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
@@ -337,8 +357,7 @@ def run_tests():
                         break
                     if output:
                         if "CUDA error: invalid device ordinal" in output:
-                            errors.append("CUDA error: invalid device ordinal. This most likely means that the system does not have the required number of GPUs")
-                            send_throughput_resp({}, errors)
+                            send_throughputs(client, aws_topic_arn, {"errors": "CUDA error: invalid device ordinal. This most likely means that the system does not have the required number of GPUs"})
                             return
                         logger.info(output.strip())
 
@@ -355,24 +374,30 @@ def run_tests():
             logger.info(throughputs)
             logger.info("runtime errors")
             logger.info(runtime_errors)
+
+            errors.extend(runtime_errors)
         
-        run_inference = os.environ.get("TEST_TYPE", "heavy") == "inference" or os.environ.get("TEST_TYPE", "heavy") == "heavy"
-        if run_inference:
-            err = setup_for_inference()
+        do_inference = os.environ.get("TEST_TYPE", "heavy") == "inference_only" or os.environ.get("TEST_TYPE", "heavy") == "heavy"
+        if do_inference:
+            err = install_packages_for_inference()
             logger.info("error from setup")
             logger.info(err)
             if err != None:
-                runtime_errors.append(err)
+                errors.append(err)
+                logger.info("errored during setup. Skipping inference tests.")
             else:
-                total_time, err = run_inference()
+                total_time, err = run_inference(gpu_type_to_inference_model.get(config, "tiiuae/falcon-7b"))
                 throughputs["falconInferenceTime"] = int(total_time)
                 logger.info(total_time)
                 logger.info(err)
 
-        send_throughput_resp(throughputs, runtime_errors + errors)
+        err_string = "\n\n".join(errors)
+        throughputs["errors"] = err_string
+        send_throughputs(client, aws_topic_arn, throughputs)
     except Exception as e:
         logger.exception(e)
-        send_throughput_resp({}, [str(e)])
+        client = initialize_aws_client(aws_key_id, aws_secret_access_key, "us-east-1")
+        send_throughputs(client, aws_topic_arn, {"errors": str(e)})
 
 
 if __name__ == "__main__":

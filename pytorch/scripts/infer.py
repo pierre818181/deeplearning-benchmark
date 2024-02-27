@@ -2,9 +2,7 @@ import os
 import subprocess
 from loguru import logger
 
-os.environ["INFERENCE_MODEL_NAME"] = "tiiuae/falcon-7b"
-
-def setup_for_inference():
+def install_packages_for_inference():
     commands = [
         "pip install --upgrade pip",
         "pip install --upgrade torch",
@@ -22,7 +20,7 @@ def setup_for_inference():
     except subprocess.CalledProcessError as e:
         return f"Error: {e}"
 
-def run_inference():
+def run_inference(model):
     import time
     from transformers import AutoTokenizer, AutoModelForCausalLM
     import transformers
@@ -30,12 +28,10 @@ def run_inference():
     import pandas as pd
     from prompts import list_of_questions
 
-    if os.environ.get("INFERENCE_PROMPTS_SIZE", None) is not None:
-        number_of_prompts = int(os.environ.get("INFERENCE_PROMPTS_SIZE"))
-        list_of_questions = list_of_questions[:number_of_prompts]
-    try:
-        model = os.environ.get("INFERENCE_MODEL_NAME", "tiiuae/falcon-7b")
+    number_of_prompts = int(os.environ.get("INFERENCE_PROMPTS_SIZE", 30))
+    list_of_questions = list_of_questions[:number_of_prompts]
 
+    try:
         tokenizer = AutoTokenizer.from_pretrained(model)
         pipeline = transformers.pipeline(
             "text-generation",
