@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# we always have to make sure to insert the right AWS credentials and topic ARN. The lambda will 
+# have no way of knowing that the pod needs to be killed if we do not do that.
 import json
 import os
 import subprocess

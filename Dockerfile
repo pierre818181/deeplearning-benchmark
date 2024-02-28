@@ -29,10 +29,8 @@ RUN pip install -r requirements.txt
 
 CMD ["python3", "compile_results_pytorch.py"]
 
+# run a blocking call, get inside the container with exec and then test stuff out
 # CMD ["python3", "-m", "http.server"]
 
 # sudo docker run -e "GPU_TYPE=8x24GB" -e "MACHINE_ID=ghnlbwbe44923" -e "API_KEY=7699e9fe969179fcce8f3c04e91c195f9a4e0971644ea391af37d7fcacac2d448c9a71525117d8ef44b20edd2deba1abd318150cbeb9a146683102bdf6db354a" -e "ENV=dev" -e "BENCHMARK_CONFIG=8x24GB" -e "PRECISION=fp32" -e "TIMEOUT=1500" --shm-size=3000g --gpus all -it host /bin/bash
 # GPU_TYPE="8x24GB" MACHINE_ID="ghnlbwbe44923" API_KEY="7699e9fe969179fcce8f3c04e91c195f9a4e0971644ea391af37d7fcacac2d448c9a71525117d8ef44b20edd2deba1abd318150cbeb9a146683102bdf6db354a" ENV="dev" BENCHMARK_CONFIG="8x24GB" PRECISION="fp32" TIMEOUT=1500 python3 compile_results_pytorch.py
-
-
-# lol55dagon
